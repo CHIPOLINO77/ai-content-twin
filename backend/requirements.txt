@@ -3,3 +3,5 @@ uvicorn[standard]
 httpx
 python-dotenv
 pydantic
+python-multipart
+pytest
