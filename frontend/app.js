@@ -11,9 +11,9 @@ function getProfileContext(){
 }
 function parseJson(text,fallback={}){
   try{return JSON.parse(text)}catch{}
-  const obj=text.match(/\\{[\\s\\S]*\\}/)?.[0];
+  const obj=text.match(/\{[\s\S]*\}/)?.[0];
   if(obj)try{return JSON.parse(obj)}catch{}
-  const arr=text.match(/\\[[\\s\\S]*\\]/)?.[0];
+  const arr=text.match(/\[[\s\S]*\]/)?.[0];
   if(arr)try{return JSON.parse(arr)}catch{}
   return fallback;
 }
@@ -95,10 +95,22 @@ $("generateContent")?.addEventListener("click",async()=>{
   }catch(e){$("generatedContent").textContent="Ошибка: "+e.message}
 });
 
+
+function renderVideos(){
+  const list=$("videoList"),count=$("videoCount");
+  if(!list)return;
+  count.textContent=String(state.videos.length);
+  list.innerHTML=state.videos.length?state.videos.map((v,i)=>'<div class="video-row"><div><b>'+esc(v.name)+'</b><small>'+esc(v.size)+' • локально</small></div><button class="small" data-remove-video="'+i+'">Удалить</button></div>').join(""):'<p>Видео пока не добавлены.</p>';
+  list.querySelectorAll("[data-remove-video]").forEach(b=>b.addEventListener("click",()=>{state.videos.splice(Number(b.dataset.removeVideo),1);saveVideos();renderVideos()}));
+}
+function saveVideos(){try{localStorage.setItem("CONTENT_TWIN_VIDEOS",JSON.stringify(state.videos))}catch{}}
+function loadVideos(){try{state.videos=JSON.parse(localStorage.getItem("CONTENT_TWIN_VIDEOS")||"[]")}catch{state.videos=[]}renderVideos()}
+
 function uploadLocalInfo(file){
   const row=document.createElement("div");row.className="uploadrow";
   row.textContent=file.name+" • "+formatSize(file.size)+" • файл выбран";
   $("uploads")?.append(row);
+  state.videos.push({name:file.name,size:formatSize(file.size)});saveVideos();renderVideos();
 }
 $("pick")?.addEventListener("click",()=>$("fileInput").click());
 $("fileInput")?.addEventListener("change",e=>[...e.target.files].forEach(uploadLocalInfo));
@@ -121,8 +133,8 @@ $("buildProfile")?.addEventListener("click",async()=>{
   $("profileState").textContent="Создаю профиль…";
   try{
     const d=await generateWithTwin(
-      "Создай Content Profile автора на основе информации, доступной сейчас. Если исходных видео ещё нет, создай базовый профиль с понятными правилами генерации для русскоязычного автора. Верни JSON с voice,tone,hook_patterns,pacing,topics,structure,audience,strengths,generation_rules.",
-      {mode:"browser-only"}
+      "Проанализируй расшифровку автора ниже. Не выдумывай наблюдения, которых нет в исходном тексте. Выдели повторяющиеся речевые и структурные паттерны, тон, темп, типы хуков, темы, аудиторию и правила генерации. Верни только JSON с voice,tone,hook_patterns,pacing,topics,structure,audience,strengths,generation_rules. РАСШИФРОВКА:\n"+transcript,
+      {mode:"transcript-analysis"}
     );
     const raw=d.choices?.[0]?.message?.content||"{}";
     const p=parseJson(raw,{raw_profile:raw})
@@ -159,4 +171,4 @@ function loadProfile(){
 }
 function formatSize(n){return n<1048576?(n/1024).toFixed(0)+" KB":(n/1048576).toFixed(1)+" MB"}
 function esc(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]))}
-updateStatus();loadProfile();
+updateStatus();loadVideos();loadProfile();
