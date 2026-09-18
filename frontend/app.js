@@ -1,4 +1,4 @@
-const POLZA_URL="https://api.polza.ai/v1";
+const $=id=>document.getElementById(id);\nconst POLZA_URL="https://api.polza.ai/v1";
 const POLZA_KEY_STORAGE="CONTENT_TWIN_POLZA_KEY";
 const POLZA_MODEL_STORAGE="CONTENT_TWIN_POLZA_MODEL";
 const DEFAULT_MODEL="openai/gpt-6-astra";
@@ -132,6 +132,9 @@ function renderProfile(p){
 $("buildProfile")?.addEventListener("click",async()=>{
   $("profileState").textContent="Создаю профиль…";
   try{
+    const transcript=$("sourceTranscript")?.value.trim()||localStorage.getItem("CONTENT_TWIN_TRANSCRIPT")||"";
+    if(!transcript){$("profileState").textContent="Нужна расшифровка";alert("Сначала вставь расшифровку или описание роликов.");return}
+    localStorage.setItem("CONTENT_TWIN_TRANSCRIPT",transcript);
     const d=await generateWithTwin(
       "Проанализируй расшифровку автора ниже. Не выдумывай наблюдения, которых нет в исходном тексте. Выдели повторяющиеся речевые и структурные паттерны, тон, темп, типы хуков, темы, аудиторию и правила генерации. Верни только JSON с voice,tone,hook_patterns,pacing,topics,structure,audience,strengths,generation_rules. РАСШИФРОВКА:\n"+transcript,
       {mode:"transcript-analysis"}
@@ -166,7 +169,8 @@ $("createShort")?.addEventListener("click",async()=>{
 function loadProfile(){
   try{
     const p=JSON.parse(localStorage.getItem("CONTENT_TWIN_PROFILE")||"null");
-    if(p)renderProfile(p);\n    const t=localStorage.getItem("CONTENT_TWIN_TRANSCRIPT")||"";if($("sourceTranscript"))$("sourceTranscript").value=t;
+    if(p)renderProfile(p);
+    const t=localStorage.getItem("CONTENT_TWIN_TRANSCRIPT")||"";if($("sourceTranscript"))$("sourceTranscript").value=t;
   }catch{}
 }
 function formatSize(n){return n<1048576?(n/1024).toFixed(0)+" KB":(n/1048576).toFixed(1)+" MB"}
