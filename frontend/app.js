@@ -4,6 +4,20 @@ const POLZA_MODEL_STORAGE="CONTENT_TWIN_POLZA_MODEL";
 const DEFAULT_MODEL="openai/gpt-6-astra";
 const state={videos:[],profile:null};
 
+function getProfileContext(){
+  let transcript=$("sourceTranscript")?.value.trim()||"";
+  if(!transcript) transcript=localStorage.getItem("CONTENT_TWIN_TRANSCRIPT")||"";
+  return {profile:state.profile||{},sourceTranscript:transcript.slice(0,30000)};
+}
+function parseJson(text,fallback={}){
+  try{return JSON.parse(text)}catch{}
+  const obj=text.match(/\\{[\\s\\S]*\\}/)?.[0];
+  if(obj)try{return JSON.parse(obj)}catch{}
+  const arr=text.match(/\\[[\\s\\S]*\\]/)?.[0];
+  if(arr)try{return JSON.parse(arr)}catch{}
+  return fallback;
+}
+
 function getKey(){return localStorage.getItem(POLZA_KEY_STORAGE)||""}
 function getModel(){return localStorage.getItem(POLZA_MODEL_STORAGE)||DEFAULT_MODEL}
 function saveSettings(){
@@ -46,7 +60,7 @@ function showSection(name){
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>showSection(b.dataset.section));
 $("settingsBtn")?.addEventListener("click",openSettings);
 $("saveSettings")?.addEventListener("click",saveSettings);
-$("closeSettings")?.addEventListener("click",closeSettings);
+$("closeSettings")?.addEventListener("click",closeSettings);$("closeSettingsTop")?.addEventListener("click",closeSettings);
 $("settingsModal")?.addEventListener("click",e=>{if(e.target.id==="settingsModal")closeSettings()});
 
 async function generateWithTwin(prompt,context={}){
@@ -111,15 +125,36 @@ $("buildProfile")?.addEventListener("click",async()=>{
       {mode:"browser-only"}
     );
     const raw=d.choices?.[0]?.message?.content||"{}";
-    let p;try{p=JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0]||"{}")}catch{p={raw_profile:raw}}
+    const p=parseJson(raw,{raw_profile:raw})
     localStorage.setItem("CONTENT_TWIN_PROFILE",JSON.stringify(p));
     renderProfile(p);
   }catch(e){$("profileState").textContent="Ошибка";alert(e.message)}
 });
+$("sourceTranscript")?.addEventListener("input",e=>localStorage.setItem("CONTENT_TWIN_TRANSCRIPT",e.target.value));
+
+$("createShort")?.addEventListener("click",async()=>{
+  const topic=$("studioTopic")?.value.trim();
+  if(!topic)return;
+  const platform=$("studioPlatform").value;
+  const duration=$("studioDuration").value;
+  const goal=$("studioGoal")?.value.trim()||"удержание внимания";
+  const out=$("studioResult");out.innerHTML="<div class=\"empty-state\">Создаю структуру…</div>";
+  try{
+    const d=await generateWithTwin(
+      "Создай оригинальный план короткого вертикального видео. Верни только JSON: {title,hook,script,beats:[{time,text,visual,caption}],broll,edit_plan,caption_style,cta,hashtags}. Тема: "+topic+". Платформа: "+platform+". Длительность: "+duration+" секунд. Цель: "+goal+". Script должен быть рассчитан на указанную длительность. Beats — последовательные отрезки времени. Не копируй чужие тексты дословно.",
+      {product:"Shorts Studio",platform,duration,goal}
+    );
+    const raw=d.choices?.[0]?.message?.content||"{}";
+    const p=parseJson(raw,{});
+    if(!p.title&&!p.hook){out.innerHTML="<pre class=\"generated\">"+esc(raw)+"</pre>";return}
+    out.innerHTML=`<div class="studio-output"><h2>${esc(p.title||"Shorts")}</h2><div class="hook"><b>HOOK</b><p>${esc(p.hook||"")}</p></div><h3>Сценарий</h3><p>${esc(p.script||"")}</p><h3>Таймлайн</h3>${Array.isArray(p.beats)?p.beats.map(b=>`<div class="beat"><b>${esc(b.time||"")}</b><div><strong>${esc(b.text||"")}</strong><small>${esc(b.visual||"")}<br>Субтитры: ${esc(b.caption||"")}</small></div></div>`).join(""):""}<h3>Монтаж</h3><p>${esc(p.edit_plan||"")}</p><p><b>B-roll:</b> ${esc(Array.isArray(p.broll)?p.broll.join(" • "):(p.broll||"—"))}</p><p><b>CTA:</b> ${esc(p.cta||"—")}</p><p><b>Хэштеги:</b> ${esc(Array.isArray(p.hashtags)?p.hashtags.join(" "):(p.hashtags||""))}</p></div>`;
+  }catch(e){out.innerHTML="<p>Ошибка: "+esc(e.message)+"</p>"}
+});
+
 function loadProfile(){
   try{
     const p=JSON.parse(localStorage.getItem("CONTENT_TWIN_PROFILE")||"null");
-    if(p)renderProfile(p);
+    if(p)renderProfile(p);\n    const t=localStorage.getItem("CONTENT_TWIN_TRANSCRIPT")||"";if($("sourceTranscript"))$("sourceTranscript").value=t;
   }catch{}
 }
 function formatSize(n){return n<1048576?(n/1024).toFixed(0)+" KB":(n/1048576).toFixed(1)+" MB"}
