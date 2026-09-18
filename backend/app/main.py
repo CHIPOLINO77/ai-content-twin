@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import BackgroundTasks, FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -21,11 +21,11 @@ DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "uploads"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024
 
-app = FastAPI(title="AI Content Twin", version="0.4.0")
+app = FastAPI(title="AI Content Twin", version="0.4.1")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -55,7 +55,7 @@ def health():
     }
 
 @app.post("/api/upload")
-async def upload_video(file: UploadFile = File(...), background_tasks: BackgroundTasks = None):
+async def upload_video(file: UploadFile = File(...)):
     allowed = {".mp4", ".mov", ".mkv", ".webm", ".avi", ".m4v"}
     suffix = Path(file.filename or "").suffix.lower()
     if suffix not in allowed:
