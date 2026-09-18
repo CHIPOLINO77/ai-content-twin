@@ -1,5 +1,7 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from pathlib import Path
 from uuid import uuid4
@@ -14,6 +16,13 @@ DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "uploads"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 app = FastAPI(title="AI Content Twin", version="0.3.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+FRONTEND_DIR = Path(__file__).resolve().parents[2].parent / "frontend"
+
+@app.get("/", include_in_schema=False)
+def frontend():
+    return FileResponse(FRONTEND_DIR / "index.html")
+
+app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
 class ChatRequest(BaseModel):
     messages: list[dict]
