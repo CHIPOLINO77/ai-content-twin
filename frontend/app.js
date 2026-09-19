@@ -101,12 +101,27 @@ $("copyGenerated")?.addEventListener("click",async()=>{try{await navigator.clipb
 $("downloadGenerated")?.addEventListener("click",()=>{const text=$("generatedContent")?.textContent||"";if(!text||text==="Создаю…")return;const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type:"text/plain;charset=utf-8"}));a.download="content-twin-output.txt";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)});
 
 $("generateContent")?.addEventListener("click",async()=>{
-  const prompt=$("generatorPrompt").value.trim();if(!prompt)return;
-  $("generatedContent").textContent="Создаю…";
+  const prompt=$("generatorPrompt")?.value.trim();if(!prompt)return;
+  $("generatedContent").textContent="Создаю текст через AI…";
+  $("generateContent").disabled=true;
   try{
-    const d=await generateWithTwin(prompt,{product:"AI Content Twin"});
-    $("generatedContent").textContent=d.choices?.[0]?.message?.content||JSON.stringify(d,null,2);
-  }catch(e){$("generatedContent").textContent="Ошибка: "+e.message}
+    const d=await generateWithTwin(prompt,{product:"AI Content Twin",mode:"text-generation"});
+    const content=d.choices?.[0]?.message?.content||JSON.stringify(d,null,2);
+    $("generatedContent").textContent=content;
+    localStorage.setItem("CONTENT_TWIN_GENERATED_TEXT",content);
+    $("sendGeneratedToVideo")?.classList.remove("hidden");
+    addLog("Текст сгенерирован. Готов к передаче в Kling.","OK");
+  }catch(e){$("generatedContent").textContent="Ошибка: "+e.message;addLog(e.message,"ERROR")}
+  finally{$("generateContent").disabled=false}
+});
+$("sendGeneratedToVideo")?.addEventListener("click",()=>{
+  const content=$("generatedContent")?.textContent?.trim()||localStorage.getItem("CONTENT_TWIN_GENERATED_TEXT")||"";
+  if(!content||content==="Создаю…"){alert("Сначала сгенерируй текст.");return}
+  localStorage.setItem("CONTENT_TWIN_GENERATED_TEXT",content);
+  const topic=$("studioTopic");if(topic)topic.value=($("generatorPrompt")?.value.trim()||"AI short");
+  showSection("studio");
+  $("videoPromptPreview").textContent=content;
+  addLog("Текст передан в Video Studio. Kling возьмёт его автоматически.","OK");
 });
 
 
@@ -189,7 +204,8 @@ async function generateAiVideo(){
   const p=state.lastShort;if(!p){addLog("Нет Shorts-плана","ERROR");alert("Сначала создай Shorts-план.");return}
   const key=getKey();if(!key){addLog("API-ключ Polza не найден","ERROR");openSettings();return}
   const model=$("videoModel")?.value||"kling/v3";
-  const duration=Math.max(3,Math.min(15,Number($("videoDuration")?.value||10)));\n  const durationValue=String(duration);
+  const duration=Math.max(3,Math.min(15,Number($("videoDuration")?.value||10)));
+  const durationValue=String(duration);
   const status=$("videoGenerationStatus"),button=$("generateAiVideo");
   if(status)status.innerHTML="<span>Запускаю Kling 3.0…</span>";
   if(button){button.disabled=true;button.textContent="Генерация…"}
