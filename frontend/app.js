@@ -87,6 +87,9 @@ $("generate")?.addEventListener("click",async()=>{
   }catch(e){$("ideas").innerHTML="<p>Ошибка: "+esc(e.message)+"</p>"}
 });
 
+$("copyGenerated")?.addEventListener("click",async()=>{try{await navigator.clipboard.writeText($("generatedContent")?.textContent||"");$("copyGenerated").textContent="Скопировано ✓"}catch{}});
+$("downloadGenerated")?.addEventListener("click",()=>{const text=$("generatedContent")?.textContent||"";if(!text||text==="Создаю…")return;const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type:"text/plain;charset=utf-8"}));a.download="content-twin-output.txt";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)});
+
 $("generateContent")?.addEventListener("click",async()=>{
   const prompt=$("generatorPrompt").value.trim();if(!prompt)return;
   $("generatedContent").textContent="Создаю…";
