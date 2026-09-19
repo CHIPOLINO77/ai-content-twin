@@ -1,4 +1,5 @@
-const $=id=>document.getElementById(id);\nconst POLZA_URL="https://api.polza.ai/v1";
+const $=id=>document.getElementById(id);
+const POLZA_URL="https://api.polza.ai/v1";
 const POLZA_KEY_STORAGE="CONTENT_TWIN_POLZA_KEY";
 const POLZA_MODEL_STORAGE="CONTENT_TWIN_POLZA_MODEL";
 const DEFAULT_MODEL="openai/gpt-6-astra";
