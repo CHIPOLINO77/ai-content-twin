@@ -1,5 +1,5 @@
 const $=id=>document.getElementById(id);
-const POLZA_URL="https://api.polza.ai/v1";
+const POLZA_URL="https://polza.ai/api/v1";
 const POLZA_MEDIA_URL="https://polza.ai/api/v1/media";
 const POLZA_KEY_STORAGE="CONTENT_TWIN_POLZA_KEY";
 const POLZA_MODEL_STORAGE="CONTENT_TWIN_POLZA_MODEL";
@@ -173,51 +173,22 @@ $("createShort")?.addEventListener("click",async()=>{
 
 function buildVideoPrompt(p){
   const beats=Array.isArray(p.beats)?p.beats.map(b=>b.visual||b.text||"").filter(Boolean).join("; "):"";
-  return ("Vertical 9:16 social video. "+(p.title||"")+". "+
-    "Main hook: "+(p.hook||"")+". "+
-    "Visual direction: "+beats+". "+
-    "Style: dynamic creator video, strong opening, cinematic lighting, clear subject, natural motion, fast pacing, no on-screen text, no logos.").slice(0,2450);
-}
-function extractMediaUrl(data){
-  return data?.output?.url ||
-    data?.output?.video_url ||
-    data?.data?.output?.url ||
-    data?.data?.video_url ||
-    (Array.isArray(data?.data)?data.data.find(x=>x?.url)?.url:"") ||
-    data?.url || "";
+  return ("Vertical 9:16 short-form video. "+(p.title||"")+". Hook: "+(p.hook||"")+". Visual direction: "+beats+". Dynamic creator style, strong opening, natural motion, cinematic lighting, fast pacing, no on-screen text, no logos.").slice(0,2500);
 }
 async function generateAiVideo(){
-  const p=state.lastShort;
-  if(!p){alert("Сначала создай Shorts-план.");return}
-  const key=getKey();
-  if(!key){openSettings();return}
+  const p=state.lastShort;if(!p){alert("Сначала создай Shorts-план.");return}
+  const key=getKey();if(!key){openSettings();return}
   const model=$("videoModel")?.value||"kling/v3";
-  const duration=Number($("videoDuration")?.value||10);
-  const status=$("videoGenerationStatus");
-  const button=$("generateAiVideo");
-  if(status)status.innerHTML="<span>Отправляю задачу в Polza AI…</span>";
+  const duration=Math.max(3,Math.min(15,Number($("videoDuration")?.value||10)));
+  const status=$("videoGenerationStatus"),button=$("generateAiVideo");
+  if(status)status.innerHTML="<span>Запускаю Kling 3.0…</span>";
   if(button){button.disabled=true;button.textContent="Генерация…"}
   try{
-    const r=await fetch(POLZA_MEDIA_URL,{
-      method:"POST",
-      headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},
-      body:JSON.stringify({
-        model,
-        input:{
-          prompt:buildVideoPrompt(p),
-          aspect_ratio:"9:16",
-          duration,
-          mode:"std",
-          sound:true
-        },
-        async:true
-      })
-    });
+    const r=await fetch(POLZA_URL+"/media",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},body:JSON.stringify({model,input:{prompt:buildVideoPrompt(p),aspect_ratio:"9:16",duration,images:[],mode:"std",sound:true},async:true})});
     const data=await r.json().catch(()=>({}));
-    if(!r.ok)throw new Error(data.error?.message||data.detail||("Polza Media: HTTP "+r.status));
-    if(!data.id)throw new Error("Polza не вернула ID генерации.");
-    state.videoJob=data;
-    if(status)status.innerHTML="<span>Задача создана: "+esc(data.id)+"</span>";
+    if(!r.ok)throw new Error(data.error?.message||data.detail||("Polza: HTTP "+r.status));
+    if(!data.id)throw new Error("Polza не вернула ID задачи.");
+    state.videoJob=data;if(status)status.innerHTML="<span>Задача создана. Генерирую…</span>";
     await pollVideoJob(data.id,key);
   }catch(e){
     if(status)status.innerHTML="<span class=\"video-error\">Ошибка: "+esc(e.message)+"</span>";
@@ -227,53 +198,33 @@ async function generateAiVideo(){
 }
 async function pollVideoJob(id,key){
   const status=$("videoGenerationStatus");
-  const maxAttempts=90;
-  for(let attempt=0;attempt<maxAttempts;attempt++){
+  for(let attempt=0;attempt<90;attempt++){
     await new Promise(r=>setTimeout(r,4000));
-    const r=await fetch(POLZA_MEDIA_URL+"/"+encodeURIComponent(id),{
-      headers:{"Authorization":"Bearer "+key}
-    });
+    const r=await fetch(POLZA_URL+"/media/"+encodeURIComponent(id),{headers:{"Authorization":"Bearer "+key}});
     const data=await r.json().catch(()=>({}));
-    if(!r.ok)throw new Error(data.error?.message||data.detail||("Статус Polza: HTTP "+r.status));
+    if(!r.ok)throw new Error(data.error?.message||data.detail||("Polza: HTTP "+r.status));
     state.videoJob=data;
-    const pct=Math.min(99,Math.round((attempt+1)/maxAttempts*100));
-    if(status)status.innerHTML="<span>Генерация AI-видео… "+pct+"%</span>";
-    if(data.status==="failed"||data.status==="cancelled"){
-      throw new Error(data.error?.message||"Генерация видео завершилась ошибкой.");
-    }
+    if(status)status.innerHTML="<span>Генерация… "+Math.min(99,Math.round((attempt+1)/90*100))+"%</span>";
+    if(data.status==="failed"||data.status==="cancelled")throw new Error(data.error?.message||"Генерация завершилась ошибкой.");
     if(data.status==="completed"){
-      const url=extractMediaUrl(data);
-      if(!url)throw new Error("Видео готово, но Polza не вернула URL результата.");
-      showGeneratedVideo(url,data);
-      return;
+      const url=data.output?.url||data.data?.output?.url||data.data?.url||data.url;
+      if(!url)throw new Error("Polza сообщила о готовности, но URL видео отсутствует.");
+      showGeneratedVideo(url,data);return;
     }
   }
-  throw new Error("Генерация занимает дольше ожидаемого. Можно обновить статус позже.");
+  throw new Error("Генерация ещё выполняется. Попробуй снова через минуту.");
 }
 function showGeneratedVideo(url,data){
-  const box=$("studioResult");
-  if(!box)return;
-  box.querySelector(".ai-video-result")?.remove();
-  const wrap=document.createElement("div");
-  wrap.className="ai-video-result";
-  const head=document.createElement("div");
-  head.className="video-result-head";
-  const title=document.createElement("strong");
-  title.textContent="AI VIDEO READY";
-  const model=document.createElement("span");
-  model.textContent=data.model||$("videoModel")?.value||"kling/v3";
-  head.append(title,model);
-  const video=document.createElement("video");
-  video.controls=true;video.playsInline=true;video.preload="metadata";video.src=url;
-  const actions=document.createElement("div");
-  actions.className="result-actions";
-  const open=document.createElement("a");
-  open.className="small";open.href=url;open.target="_blank";open.rel="noopener";open.textContent="Открыть видео";
-  const download=document.createElement("a");
-  download.className="small";download.href=url;download.download="content-twin-ai-video.mp4";download.textContent="Скачать";
-  actions.append(open,download);
-  wrap.append(head,video,actions);
-  box.appendChild(wrap);
+  const box=$("studioResult");if(!box)return;box.querySelector(".ai-video-result")?.remove();
+  const wrap=document.createElement("div");wrap.className="ai-video-result";
+  const head=document.createElement("div");head.className="video-result-head";
+  const title=document.createElement("strong");title.textContent="AI VIDEO READY";
+  const model=document.createElement("span");model.textContent=data.model||"kling/v3";head.append(title,model);
+  const video=document.createElement("video");video.controls=true;video.playsInline=true;video.preload="metadata";video.src=url;
+  const actions=document.createElement("div");actions.className="result-actions";
+  const open=document.createElement("a");open.className="small";open.href=url;open.target="_blank";open.rel="noopener";open.textContent="Открыть видео";
+  const download=document.createElement("a");download.className="small";download.href=url;download.download="content-twin-ai-video.mp4";download.textContent="Скачать";
+  actions.append(open,download);wrap.append(head,video,actions);box.appendChild(wrap);
   if($("videoGenerationStatus"))$("videoGenerationStatus").innerHTML="<span>✓ AI-видео готово</span>";
 }
 async function renderShortVideo(){
