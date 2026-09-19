@@ -3,7 +3,7 @@ const POLZA_URL="https://api.polza.ai/v1";
 const POLZA_KEY_STORAGE="CONTENT_TWIN_POLZA_KEY";
 const POLZA_MODEL_STORAGE="CONTENT_TWIN_POLZA_MODEL";
 const DEFAULT_MODEL="openai/gpt-6-astra";
-const state={videos:[],profile:null};
+const state={videos:[],profile:null,lastShort:null,generated:false};
 
 function getProfileContext(){
   let transcript=$("sourceTranscript")?.value.trim()||"";
@@ -166,9 +166,41 @@ $("createShort")?.addEventListener("click",async()=>{
     const raw=d.choices?.[0]?.message?.content||"{}";
     const p=parseJson(raw,{});
     if(!p.title&&!p.hook){out.innerHTML="<pre class=\"generated\">"+esc(raw)+"</pre>";return}
-    out.innerHTML=`<div class="studio-output"><h2>${esc(p.title||"Shorts")}</h2><div class="hook"><b>HOOK</b><p>${esc(p.hook||"")}</p></div><h3>Сценарий</h3><p>${esc(p.script||"")}</p><h3>Таймлайн</h3>${Array.isArray(p.beats)?p.beats.map(b=>`<div class="beat"><b>${esc(b.time||"")}</b><div><strong>${esc(b.text||"")}</strong><small>${esc(b.visual||"")}<br>Субтитры: ${esc(b.caption||"")}</small></div></div>`).join(""):""}<h3>Монтаж</h3><p>${esc(p.edit_plan||"")}</p><p><b>B-roll:</b> ${esc(Array.isArray(p.broll)?p.broll.join(" • "):(p.broll||"—"))}</p><p><b>CTA:</b> ${esc(p.cta||"—")}</p><p><b>Хэштеги:</b> ${esc(Array.isArray(p.hashtags)?p.hashtags.join(" "):(p.hashtags||""))}</p></div>`;
+    state.lastShort=p;state.generated=true;updateAnalytics();$("renderShort")?.classList.remove("hidden");out.innerHTML=`<div class="studio-output"><h2>${esc(p.title||"Shorts")}</h2><div class="hook"><b>HOOK</b><p>${esc(p.hook||"")}</p></div><h3>Сценарий</h3><p>${esc(p.script||"")}</p><h3>Таймлайн</h3>${Array.isArray(p.beats)?p.beats.map(b=>`<div class="beat"><b>${esc(b.time||"")}</b><div><strong>${esc(b.text||"")}</strong><small>${esc(b.visual||"")}<br>Субтитры: ${esc(b.caption||"")}</small></div></div>`).join(""):""}<h3>Монтаж</h3><p>${esc(p.edit_plan||"")}</p><p><b>B-roll:</b> ${esc(Array.isArray(p.broll)?p.broll.join(" • "):(p.broll||"—"))}</p><p><b>CTA:</b> ${esc(p.cta||"—")}</p><p><b>Хэштеги:</b> ${esc(Array.isArray(p.hashtags)?p.hashtags.join(" "):(p.hashtags||""))}</p></div>`;
   }catch(e){out.innerHTML="<p>Ошибка: "+esc(e.message)+"</p>"}
 });
+
+async function renderShortVideo(){
+  const p=state.lastShort;if(!p)return;
+  const canvas=document.createElement("canvas");canvas.width=720;canvas.height=1280;
+  const ctx=canvas.getContext("2d");const stream=canvas.captureStream(30);
+  const chunks=[];const rec=new MediaRecorder(stream,{mimeType:"video/webm"});
+  rec.ondataavailable=e=>e.data.size&&chunks.push(e.data);
+  const duration=Math.max(5,Number($("studioDuration")?.value||15));
+  const lines=String(p.script||p.hook||"AI Content Twin").match(/.{1,34}(?:\\s|$)/g)||[String(p.script||p.hook||"AI Content Twin")];
+  rec.start();
+  const start=performance.now();
+  await new Promise(resolve=>{
+    function frame(now){
+      const elapsed=(now-start)/1000;if(elapsed>=duration){resolve();return}
+      const grad=ctx.createLinearGradient(0,0,720,1280);grad.addColorStop(0,"#09090f");grad.addColorStop(1,"#18122d");ctx.fillStyle=grad;ctx.fillRect(0,0,720,1280);
+      ctx.fillStyle="#a78bfa";ctx.font="700 22px Arial";ctx.fillText("AI CONTENT TWIN",48,72);
+      ctx.fillStyle="#fff";ctx.font="800 48px Arial";ctx.fillText("SHORTS",48,145);
+      ctx.font="700 38px Arial";ctx.fillStyle="#fff";
+      const line=lines[Math.min(lines.length-1,Math.floor(elapsed/duration*lines.length))]||"";
+      const words=line.trim().split(/\\s+/);let y=580;let row="";
+      for(const w of words){if((row+w).length>22){ctx.fillText(row,48,y);y+=54;row=""}row+=w+" ";}
+      ctx.fillText(row,48,y);
+      ctx.fillStyle="#8b93a1";ctx.font="20px Arial";ctx.fillText(Math.floor(elapsed)+"s / "+duration+"s",48,1200);
+      requestAnimationFrame(frame);
+    } requestAnimationFrame(frame);
+  });
+  rec.stop();await new Promise(resolve=>rec.onstop=resolve);
+  const blob=new Blob(chunks,{type:"video/webm"});const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");a.href=url;a.download="content-twin-short.webm";a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);
+  $("renderShort").textContent="✓ Видео готово";
+}
+$("renderShort")?.addEventListener("click",renderShortVideo);
 
 function loadProfile(){
   try{
