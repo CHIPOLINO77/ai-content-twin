@@ -5,6 +5,15 @@ const POLZA_KEY_STORAGE="CONTENT_TWIN_POLZA_KEY";
 const POLZA_MODEL_STORAGE="CONTENT_TWIN_POLZA_MODEL";
 const DEFAULT_MODEL="openai/gpt-6-astra";
 const state={videos:[],profile:null,lastShort:null,generated:false,videoJob:null};
+const logStore=[];
+function addLog(message,type="INFO"){
+  const now=new Date();const time=now.toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+  logStore.push({time,message,type});if(logStore.length>100)logStore.shift();
+  const box=$("logWindow");if(!box)return;
+  box.innerHTML=logStore.map(x=>'<div class="log-line '+(x.type==="ERROR"?"error":x.type==="OK"?"ok":"")+'"><span class="log-time">'+x.time+'</span><span class="log-type">'+x.type+'</span><span class="log-msg">'+esc(x.message)+'</span></div>').join("");
+  box.scrollTop=box.scrollHeight;if($("logCount"))$("logCount").textContent=String(logStore.length);
+}
+
 
 function getProfileContext(){
   let transcript=$("sourceTranscript")?.value.trim()||"";
@@ -176,8 +185,9 @@ function buildVideoPrompt(p){
   return ("Vertical 9:16 short-form video. "+(p.title||"")+". Hook: "+(p.hook||"")+". Visual direction: "+beats+". Dynamic creator style, strong opening, natural motion, cinematic lighting, fast pacing, no on-screen text, no logos.").slice(0,2500);
 }
 async function generateAiVideo(){
-  const p=state.lastShort;if(!p){alert("Сначала создай Shorts-план.");return}
-  const key=getKey();if(!key){openSettings();return}
+  addLog("Запуск генерации AI-видео","INFO");
+  const p=state.lastShort;if(!p){addLog("Нет Shorts-плана","ERROR");alert("Сначала создай Shorts-план.");return}
+  const key=getKey();if(!key){addLog("API-ключ Polza не найден","ERROR");openSettings();return}
   const model=$("videoModel")?.value||"kling/v3";
   const duration=Math.max(3,Math.min(15,Number($("videoDuration")?.value||10)));
   const status=$("videoGenerationStatus"),button=$("generateAiVideo");
@@ -188,15 +198,16 @@ async function generateAiVideo(){
     const data=await r.json().catch(()=>({}));
     if(!r.ok)throw new Error(data.error?.message||data.detail||("Polza: HTTP "+r.status));
     if(!data.id)throw new Error("Polza не вернула ID задачи.");
-    state.videoJob=data;if(status)status.innerHTML="<span>Задача создана. Генерирую…</span>";
+    state.videoJob=data;if(status)status.innerHTML="<span>Задача создана. Генерирую…</span>";addLog("Задача создана: "+data.id,"OK");
     await pollVideoJob(data.id,key);
   }catch(e){
-    if(status)status.innerHTML="<span class=\"video-error\">Ошибка: "+esc(e.message)+"</span>";
+    if(status)status.innerHTML="<span class=\"video-error\">Ошибка: "+esc(e.message)+"</span>";addLog(e.message,"ERROR");
   }finally{
     if(button){button.disabled=false;button.textContent="✦ Сгенерировать AI-видео"}
   }
 }
 async function pollVideoJob(id,key){
+  addLog("Проверяю статус задачи "+id,"INFO");
   const status=$("videoGenerationStatus");
   for(let attempt=0;attempt<90;attempt++){
     await new Promise(r=>setTimeout(r,4000));
@@ -285,7 +296,7 @@ function enhanceStudioResult(){
 if($("studioResult")){new MutationObserver(enhanceStudioResult).observe($("studioResult"),{childList:true,subtree:true});}
 
 document.querySelectorAll("[data-jump]").forEach(b=>b.addEventListener("click",()=>showSection(b.dataset.jump)));
-const titles={dashboard:["Your content. Amplified.","Преврати свои материалы в систему производства контента."],videos:["Моя библиотека.","Материалы автора в одном workspace."],profile:["Content Profile.","Собери цифровой отпечаток своего стиля."],ideas:["Idea Lab.","Идеи, которые можно сразу превращать в ролики."],generator:["Content Generator.","От запроса к готовому контенту."],studio:["Shorts Studio.","Сценарий, таймлайн и монтаж в одном месте."],hooks:["Hook Lab.","Тестируй первые секунды до публикации."],analytics:["Analytics.","Смотри на контент как на систему."]};
+const titles={logs:["System Logs.","Технические события и состояние генерации."],dashboard:["Your content. Amplified.","Преврати свои материалы в систему производства контента."],videos:["Моя библиотека.","Материалы автора в одном workspace."],profile:["Content Profile.","Собери цифровой отпечаток своего стиля."],ideas:["Idea Lab.","Идеи, которые можно сразу превращать в ролики."],generator:["Content Generator.","От запроса к готовому контенту."],studio:["Shorts Studio.","Сценарий, таймлайн и монтаж в одном месте."],hooks:["Hook Lab.","Тестируй первые секунды до публикации."],analytics:["Analytics.","Смотри на контент как на систему."]};
 const oldShowSection=showSection;
 showSection=function(name){oldShowSection(name);const t=titles[name]||titles.dashboard;if($("pageTitle"))$("pageTitle").textContent=t[0];if($("pageSubtitle"))$("pageSubtitle").textContent=t[1];updateAnalytics();};
 function updateAnalytics(){
