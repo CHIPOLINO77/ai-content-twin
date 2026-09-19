@@ -1,9 +1,10 @@
 const $=id=>document.getElementById(id);
 const POLZA_URL="https://api.polza.ai/v1";
+const POLZA_MEDIA_URL="https://polza.ai/api/v1/media";
 const POLZA_KEY_STORAGE="CONTENT_TWIN_POLZA_KEY";
 const POLZA_MODEL_STORAGE="CONTENT_TWIN_POLZA_MODEL";
 const DEFAULT_MODEL="openai/gpt-6-astra";
-const state={videos:[],profile:null,lastShort:null,generated:false};
+const state={videos:[],profile:null,lastShort:null,generated:false,videoJob:null};
 
 function getProfileContext(){
   let transcript=$("sourceTranscript")?.value.trim()||"";
@@ -170,37 +171,128 @@ $("createShort")?.addEventListener("click",async()=>{
   }catch(e){out.innerHTML="<p>Ошибка: "+esc(e.message)+"</p>"}
 });
 
+function buildVideoPrompt(p){
+  const beats=Array.isArray(p.beats)?p.beats.map(b=>b.visual||b.text||"").filter(Boolean).join("; "):"";
+  return ("Vertical 9:16 social video. "+(p.title||"")+". "+
+    "Main hook: "+(p.hook||"")+". "+
+    "Visual direction: "+beats+". "+
+    "Style: dynamic creator video, strong opening, cinematic lighting, clear subject, natural motion, fast pacing, no on-screen text, no logos.").slice(0,2450);
+}
+function extractMediaUrl(data){
+  return data?.output?.url ||
+    data?.output?.video_url ||
+    data?.data?.output?.url ||
+    data?.data?.video_url ||
+    (Array.isArray(data?.data)?data.data.find(x=>x?.url)?.url:"") ||
+    data?.url || "";
+}
+async function generateAiVideo(){
+  const p=state.lastShort;
+  if(!p){alert("Сначала создай Shorts-план.");return}
+  const key=getKey();
+  if(!key){openSettings();return}
+  const model=$("videoModel")?.value||"kling/v3";
+  const duration=Number($("videoDuration")?.value||10);
+  const status=$("videoGenerationStatus");
+  const button=$("generateAiVideo");
+  if(status)status.innerHTML="<span>Отправляю задачу в Polza AI…</span>";
+  if(button){button.disabled=true;button.textContent="Генерация…"}
+  try{
+    const r=await fetch(POLZA_MEDIA_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},
+      body:JSON.stringify({
+        model,
+        input:{
+          prompt:buildVideoPrompt(p),
+          aspect_ratio:"9:16",
+          duration,
+          mode:"std",
+          sound:true
+        },
+        async:true
+      })
+    });
+    const data=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(data.error?.message||data.detail||("Polza Media: HTTP "+r.status));
+    if(!data.id)throw new Error("Polza не вернула ID генерации.");
+    state.videoJob=data;
+    if(status)status.innerHTML="<span>Задача создана: "+esc(data.id)+"</span>";
+    await pollVideoJob(data.id,key);
+  }catch(e){
+    if(status)status.innerHTML="<span class="video-error">Ошибка: "+esc(e.message)+"</span>";
+  }finally{
+    if(button){button.disabled=false;button.textContent="✦ Сгенерировать AI-видео"}
+  }
+}
+async function pollVideoJob(id,key){
+  const status=$("videoGenerationStatus");
+  const maxAttempts=90;
+  for(let attempt=0;attempt<maxAttempts;attempt++){
+    await new Promise(r=>setTimeout(r,4000));
+    const r=await fetch(POLZA_MEDIA_URL+"/"+encodeURIComponent(id),{
+      headers:{"Authorization":"Bearer "+key}
+    });
+    const data=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(data.error?.message||data.detail||("Статус Polza: HTTP "+r.status));
+    state.videoJob=data;
+    const pct=Math.min(99,Math.round((attempt+1)/maxAttempts*100));
+    if(status)status.innerHTML="<span>Генерация AI-видео… "+pct+"%</span>";
+    if(data.status==="failed"||data.status==="cancelled"){
+      throw new Error(data.error?.message||"Генерация видео завершилась ошибкой.");
+    }
+    if(data.status==="completed"){
+      const url=extractMediaUrl(data);
+      if(!url)throw new Error("Видео готово, но Polza не вернула URL результата.");
+      showGeneratedVideo(url,data);
+      return;
+    }
+  }
+  throw new Error("Генерация занимает дольше ожидаемого. Можно обновить статус позже.");
+}
+function showGeneratedVideo(url,data){
+  const box=$("studioResult");
+  const old=box?.querySelector(".ai-video-result");
+  old?.remove();
+  if(box){
+    const wrap=document.createElement("div");
+    wrap.className="ai-video-result";
+    wrap.innerHTML='<div class="video-result-head"><strong>AI VIDEO READY</strong><span>'+esc(data.model||$("videoModel")?.value||"kling/v3")+'</span></div><video controls playsinline preload="metadata" src="'+esc(url)+'"></video><div class="result-actions"><a class="small" href="'+esc(url)+'" target="_blank" rel="noopener">Открыть видео</a><a class="small" href="'+esc(url)+'" download>Скачать</a></div>';
+    box.appendChild(wrap);
+  }
+  if($("videoGenerationStatus"))$("videoGenerationStatus").innerHTML="<span>✓ AI-видео готово</span>";
+}
 async function renderShortVideo(){
   const p=state.lastShort;if(!p)return;
   const canvas=document.createElement("canvas");canvas.width=720;canvas.height=1280;
   const ctx=canvas.getContext("2d");const stream=canvas.captureStream(30);
   const chunks=[];const rec=new MediaRecorder(stream,{mimeType:"video/webm"});
   rec.ondataavailable=e=>e.data.size&&chunks.push(e.data);
-  const duration=Math.max(5,Number($("studioDuration")?.value||15));
+  const duration=Math.max(5,Math.min(15,Number($("studioDuration")?.value||15)));
   const lines=String(p.script||p.hook||"AI Content Twin").match(/.{1,34}(?:\\s|$)/g)||[String(p.script||p.hook||"AI Content Twin")];
+  let startTime=performance.now();
   rec.start();
-  const start=performance.now();
   await new Promise(resolve=>{
-    function frame(now){
-      const elapsed=(now-start)/1000;if(elapsed>=duration){resolve();return}
-      const grad=ctx.createLinearGradient(0,0,720,1280);grad.addColorStop(0,"#09090f");grad.addColorStop(1,"#18122d");ctx.fillStyle=grad;ctx.fillRect(0,0,720,1280);
-      ctx.fillStyle="#a78bfa";ctx.font="700 22px Arial";ctx.fillText("AI CONTENT TWIN",48,72);
-      ctx.fillStyle="#fff";ctx.font="800 48px Arial";ctx.fillText("SHORTS",48,145);
-      ctx.font="700 38px Arial";ctx.fillStyle="#fff";
-      const line=lines[Math.min(lines.length-1,Math.floor(elapsed/duration*lines.length))]||"";
-      const words=line.trim().split(/\\s+/);let y=580;let row="";
-      for(const w of words){if((row+w).length>22){ctx.fillText(row,48,y);y+=54;row=""}row+=w+" ";}
-      ctx.fillText(row,48,y);
-      ctx.fillStyle="#8b93a1";ctx.font="20px Arial";ctx.fillText(Math.floor(elapsed)+"s / "+duration+"s",48,1200);
-      requestAnimationFrame(frame);
-    } requestAnimationFrame(frame);
+    const draw=now=>{
+      const t=(now-startTime)/1000;
+      ctx.fillStyle="#090a0d";ctx.fillRect(0,0,720,1280);
+      ctx.fillStyle="#a78bfa";ctx.font="700 24px system-ui";ctx.fillText("CONTENT TWIN",42,70);
+      ctx.fillStyle="#fff";ctx.font="800 42px system-ui";
+      const line=lines[Math.min(lines.length-1,Math.floor(t/Math.max(.7,duration/lines.length)))];
+      ctx.fillText(line?.trim()||"",42,620);
+      ctx.fillStyle="#8f96a3";ctx.font="18px system-ui";ctx.fillText("AI Content Twin • preview",42,1210);
+      if(t<duration)requestAnimationFrame(draw);else resolve();
+    };
+    requestAnimationFrame(draw);
   });
-  rec.stop();await new Promise(resolve=>rec.onstop=resolve);
+  rec.stop();
+  await new Promise(resolve=>rec.onstop=resolve);
   const blob=new Blob(chunks,{type:"video/webm"});const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");a.href=url;a.download="content-twin-short.webm";a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);
-  $("renderShort").textContent="✓ Видео готово";
+  const a=document.createElement("a");a.href=url;a.download="content-twin-short-preview.webm";a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);
+  $("renderShort").textContent="✓ Preview готов";
 }
 $("renderShort")?.addEventListener("click",renderShortVideo);
+$("generateAiVideo")?.addEventListener("click",generateAiVideo);
 
 function loadProfile(){
   try{
