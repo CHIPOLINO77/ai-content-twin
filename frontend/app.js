@@ -252,14 +252,28 @@ async function pollVideoJob(id,key){
 }
 function showGeneratedVideo(url,data){
   const box=$("studioResult");
-  const old=box?.querySelector(".ai-video-result");
-  old?.remove();
-  if(box){
-    const wrap=document.createElement("div");
-    wrap.className="ai-video-result";
-    wrap.innerHTML='<div class="video-result-head"><strong>AI VIDEO READY</strong><span>'+esc(data.model||$("videoModel")?.value||"kling/v3")+'</span></div><video controls playsinline preload="metadata" src="'+esc(url)+'"></video><div class="result-actions"><a class="small" href="'+esc(url)+'" target="_blank" rel="noopener">Открыть видео</a><a class="small" href="'+esc(url)+'" download>Скачать</a></div>';
-    box.appendChild(wrap);
-  }
+  if(!box)return;
+  box.querySelector(".ai-video-result")?.remove();
+  const wrap=document.createElement("div");
+  wrap.className="ai-video-result";
+  const head=document.createElement("div");
+  head.className="video-result-head";
+  const title=document.createElement("strong");
+  title.textContent="AI VIDEO READY";
+  const model=document.createElement("span");
+  model.textContent=data.model||$("videoModel")?.value||"kling/v3";
+  head.append(title,model);
+  const video=document.createElement("video");
+  video.controls=true;video.playsInline=true;video.preload="metadata";video.src=url;
+  const actions=document.createElement("div");
+  actions.className="result-actions";
+  const open=document.createElement("a");
+  open.className="small";open.href=url;open.target="_blank";open.rel="noopener";open.textContent="Открыть видео";
+  const download=document.createElement("a");
+  download.className="small";download.href=url;download.download="content-twin-ai-video.mp4";download.textContent="Скачать";
+  actions.append(open,download);
+  wrap.append(head,video,actions);
+  box.appendChild(wrap);
   if($("videoGenerationStatus"))$("videoGenerationStatus").innerHTML="<span>✓ AI-видео готово</span>";
 }
 async function renderShortVideo(){
