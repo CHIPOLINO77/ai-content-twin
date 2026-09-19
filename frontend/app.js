@@ -195,10 +195,16 @@ function enhanceStudioResult(){
 }
 if($("studioResult")){new MutationObserver(enhanceStudioResult).observe($("studioResult"),{childList:true,subtree:true});}
 
+document.querySelectorAll("[data-jump]").forEach(b=>b.addEventListener("click",()=>showSection(b.dataset.jump)));
+const titles={dashboard:["Your content. Amplified.","Преврати свои материалы в систему производства контента."],videos:["Моя библиотека.","Материалы автора в одном workspace."],profile:["Content Profile.","Собери цифровой отпечаток своего стиля."],ideas:["Idea Lab.","Идеи, которые можно сразу превращать в ролики."],generator:["Content Generator.","От запроса к готовому контенту."],studio:["Shorts Studio.","Сценарий, таймлайн и монтаж в одном месте."],hooks:["Hook Lab.","Тестируй первые секунды до публикации."],analytics:["Analytics.","Смотри на контент как на систему."]};
+const oldShowSection=showSection;
+showSection=function(name){oldShowSection(name);const t=titles[name]||titles.dashboard;if($("pageTitle"))$("pageTitle").textContent=t[0];if($("pageSubtitle"))$("pageSubtitle").textContent=t[1];updateAnalytics();};
 function updateAnalytics(){
   if($("metricVideos"))$("metricVideos").textContent=String(state.videos.length);
   if($("metricProfile"))$("metricProfile").textContent=state.profile?"Готов":"—";
   if($("metricShort"))$("metricShort").textContent=state.generated?"Готов":"—";
+  if($("dashVideoState"))$("dashVideoState").textContent=state.videos.length+" материалов";
+  if($("dashProfileState"))$("dashProfileState").textContent=state.profile?"Готов":"Не создан";
 }
 $("generateHooks")?.addEventListener("click",async()=>{
   const topic=$("hookTopic")?.value.trim();const count=Number($("hookCount")?.value||10);
