@@ -175,4 +175,20 @@ function loadProfile(){
 }
 function formatSize(n){return n<1048576?(n/1024).toFixed(0)+" KB":(n/1048576).toFixed(1)+" MB"}
 function esc(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]))}
+function enhanceStudioResult(){
+  const box=$("studioResult");
+  const output=box?.querySelector(".studio-output");
+  if(!output||output.querySelector(".result-actions"))return;
+  const actions=document.createElement("div");
+  actions.className="result-actions";
+  const copy=document.createElement("button");
+  copy.className="small";copy.textContent="Копировать";
+  copy.addEventListener("click",async()=>{try{await navigator.clipboard.writeText(output.innerText);copy.textContent="Скопировано ✓"}catch{copy.textContent="Не удалось"}});
+  const save=document.createElement("button");
+  save.className="small";save.textContent="Скачать TXT";
+  save.addEventListener("click",()=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([output.innerText],{type:"text/plain;charset=utf-8"}));a.download="shorts-plan.txt";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)});
+  actions.append(copy,save);output.prepend(actions);
+}
+if($("studioResult")){new MutationObserver(enhanceStudioResult).observe($("studioResult"),{childList:true,subtree:true});}
+
 updateStatus();loadVideos();loadProfile();
