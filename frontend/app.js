@@ -220,7 +220,7 @@ async function generateAiVideo(){
     if(status)status.innerHTML="<span>Задача создана: "+esc(data.id)+"</span>";
     await pollVideoJob(data.id,key);
   }catch(e){
-    if(status)status.innerHTML="<span class="video-error">Ошибка: "+esc(e.message)+"</span>";
+    if(status)status.innerHTML="<span class=\"video-error\">Ошибка: "+esc(e.message)+"</span>";
   }finally{
     if(button){button.disabled=false;button.textContent="✦ Сгенерировать AI-видео"}
   }
@@ -283,7 +283,7 @@ async function renderShortVideo(){
   const chunks=[];const rec=new MediaRecorder(stream,{mimeType:"video/webm"});
   rec.ondataavailable=e=>e.data.size&&chunks.push(e.data);
   const duration=Math.max(5,Math.min(15,Number($("studioDuration")?.value||15)));
-  const lines=String(p.script||p.hook||"AI Content Twin").match(/.{1,34}(?:\\s|$)/g)||[String(p.script||p.hook||"AI Content Twin")];
+  const lines=String(p.script||p.hook||"AI Content Twin").match(/.{1,34}(?:\s|$)/g)||[String(p.script||p.hook||"AI Content Twin")];
   let startTime=performance.now();
   rec.start();
   await new Promise(resolve=>{
