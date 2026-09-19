@@ -195,13 +195,16 @@ $("createShort")?.addEventListener("click",async()=>{
   }catch(e){out.innerHTML="<p>Ошибка: "+esc(e.message)+"</p>"}
 });
 
-function buildVideoPrompt(p){
+function buildVideoPrompt(p,text=""){
   const beats=Array.isArray(p.beats)?p.beats.map(b=>b.visual||b.text||"").filter(Boolean).join("; "):"";
-  return ("Vertical 9:16 short-form video. "+(p.title||"")+". Hook: "+(p.hook||"")+". Visual direction: "+beats+". Dynamic creator style, strong opening, natural motion, cinematic lighting, fast pacing, no on-screen text, no logos.").slice(0,2500);
+  const source=text||[p.title,p.hook,p.script,beats].filter(Boolean).join(". ");
+  return ("Create a vertical 9:16 short-form video based on this generated script/prompt: "+source+". Visualize the meaning and actions, dynamic creator style, strong opening, natural motion, cinematic lighting, fast pacing, no on-screen text, no logos.").slice(0,5000);
 }
 async function generateAiVideo(){
   addLog("Запуск генерации AI-видео","INFO");
-  const p=state.lastShort;if(!p){addLog("Нет Shorts-плана","ERROR");alert("Сначала создай Shorts-план.");return}
+  const generatedText=$("generatedContent")?.textContent?.trim()||localStorage.getItem("CONTENT_TWIN_GENERATED_TEXT")||"";
+  const p=state.lastShort||{};
+  if(!generatedText&&!p.hook&&!p.script){addLog("Нет текста для видео","ERROR");alert("Сначала сгенерируй текст в Content Generator.");return}
   const key=getKey();if(!key){addLog("API-ключ Polza не найден","ERROR");openSettings();return}
   const model=$("videoModel")?.value||"kling/v3";
   const duration=Math.max(3,Math.min(15,Number($("videoDuration")?.value||10)));
@@ -210,7 +213,7 @@ async function generateAiVideo(){
   if(status)status.innerHTML="<span>Запускаю Kling 3.0…</span>";
   if(button){button.disabled=true;button.textContent="Генерация…"}
   try{
-    const r=await fetch(POLZA_URL+"/media",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},body:JSON.stringify({model,input:{prompt:buildVideoPrompt(p),aspect_ratio:"9:16",duration:durationValue,images:[],mode:"std",sound:true},async:true})});
+    const r=await fetch(POLZA_URL+"/media",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},body:JSON.stringify({model,input:{prompt:buildVideoPrompt(p,generatedText),aspect_ratio:"9:16",duration:durationValue,images:[],mode:"std",sound:true},async:true})});
     const data=await r.json().catch(()=>({}));
     if(!r.ok)throw new Error(data.error?.message||data.detail||("Polza: HTTP "+r.status));
     if(!data.id)throw new Error("Polza не вернула ID задачи.");
