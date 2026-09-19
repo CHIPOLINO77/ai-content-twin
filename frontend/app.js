@@ -195,4 +195,20 @@ function enhanceStudioResult(){
 }
 if($("studioResult")){new MutationObserver(enhanceStudioResult).observe($("studioResult"),{childList:true,subtree:true});}
 
+function updateAnalytics(){
+  if($("metricVideos"))$("metricVideos").textContent=String(state.videos.length);
+  if($("metricProfile"))$("metricProfile").textContent=state.profile?"Готов":"—";
+  if($("metricShort"))$("metricShort").textContent=state.generated?"Готов":"—";
+}
+$("generateHooks")?.addEventListener("click",async()=>{
+  const topic=$("hookTopic")?.value.trim();const count=Number($("hookCount")?.value||10);
+  if(!topic)return;
+  $("hookResults").innerHTML="<div class=\"empty-state\">Генерирую варианты…</div>";
+  try{
+    const d=await generateWithTwin("Сгенерируй "+count+" оригинальных хуков для коротких вертикальных видео по теме: "+topic+". Верни только JSON-массив объектов {hook,visual,curiosity}. Хуки должны отличаться по механике и быть пригодны для первых секунд ролика.",{module:"Hook Lab",topic});
+    const list=parseJson(d.choices?.[0]?.message?.content||"[]",[]);
+    $("hookResults").innerHTML=Array.isArray(list)&&list.length?list.map((x,i)=>`<div class="hook-card"><span>${i+1}</span><div><strong>${esc(x.hook||"")}</strong><p>${esc(x.visual||"")}</p><small>${esc(x.curiosity||"")}</small></div></div>`).join(""):"<p>Не удалось разобрать ответ модели.</p>";
+  }catch(e){$("hookResults").innerHTML="<p>Ошибка: "+esc(e.message)+"</p>"}
+});
+updateAnalytics();
 updateStatus();loadVideos();loadProfile();
