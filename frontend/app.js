@@ -1,5 +1,5 @@
 const $=id=>document.getElementById(id);
-const POLZA_URL="https://polza.ai/api/v1";
+const POLZA_URL="/api";
 const POLZA_MEDIA_URL="https://polza.ai/api/v1/media";
 const POLZA_KEY_STORAGE="CONTENT_TWIN_POLZA_KEY";
 const POLZA_MODEL_STORAGE="CONTENT_TWIN_POLZA_MODEL";
@@ -51,11 +51,9 @@ function updateStatus(){
   $("apiStatus").textContent=ok?"Polza AI готов":"Нужен API-ключ Polza";
 }
 async function polza(messages,temperature=.7){
-  const key=getKey();
-  if(!key)throw new Error("Добавь API-ключ Polza в настройках");
-  const r=await fetch(POLZA_URL+"/chat/completions",{
+  const r=await fetch(POLZA_URL+"/chat",{
     method:"POST",
-    headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},
+    headers:{"Content-Type":"application/json"},
     body:JSON.stringify({model:getModel(),messages,temperature})
   });
   const data=await r.json().catch(()=>({}));
@@ -205,7 +203,7 @@ async function generateAiVideo(){
   const generatedText=$("generatedContent")?.textContent?.trim()||localStorage.getItem("CONTENT_TWIN_GENERATED_TEXT")||"";
   const p=state.lastShort||{};
   if(!generatedText&&!p.hook&&!p.script){addLog("Нет текста для видео","ERROR");alert("Сначала сгенерируй текст в Content Generator.");return}
-  const key=getKey();if(!key){addLog("API-ключ Polza не найден","ERROR");openSettings();return}
+
   const model=$("videoModel")?.value||"kling/v3";
   const duration=Math.max(3,Math.min(15,Number($("videoDuration")?.value||10)));
   const durationValue=String(duration);
@@ -213,24 +211,24 @@ async function generateAiVideo(){
   if(status)status.innerHTML="<span>Запускаю Kling 3.0…</span>";
   if(button){button.disabled=true;button.textContent="Генерация…"}
   try{
-    const r=await fetch(POLZA_URL+"/media",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},body:JSON.stringify({model,input:{prompt:buildVideoPrompt(p,generatedText),aspect_ratio:"9:16",duration:durationValue,images:[],mode:"std",sound:true},async:true})});
+    const r=await fetch(POLZA_URL+"/media",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model,input:{prompt:buildVideoPrompt(p,generatedText),aspect_ratio:"9:16",duration:durationValue,images:[],mode:"std",sound:true},async:true})});
     const data=await r.json().catch(()=>({}));
     if(!r.ok)throw new Error(data.error?.message||data.detail||("Polza: HTTP "+r.status));
     if(!data.id)throw new Error("Polza не вернула ID задачи.");
     state.videoJob=data;if(status)status.innerHTML="<span>Задача создана. Генерирую…</span>";addLog("Задача создана: "+data.id,"OK");
-    await pollVideoJob(data.id,key);
+    await pollVideoJob(data.id);
   }catch(e){
     if(status)status.innerHTML="<span class=\"video-error\">Ошибка: "+esc(e.message)+"</span>";addLog(e.message,"ERROR");
   }finally{
     if(button){button.disabled=false;button.textContent="✦ Сгенерировать AI-видео"}
   }
 }
-async function pollVideoJob(id,key){
+async function pollVideoJob(id){
   addLog("Проверяю статус задачи "+id,"INFO");
   const status=$("videoGenerationStatus");
   for(let attempt=0;attempt<90;attempt++){
     await new Promise(r=>setTimeout(r,4000));
-    const r=await fetch(POLZA_URL+"/media/"+encodeURIComponent(id),{headers:{"Authorization":"Bearer "+key}});
+    const r=await fetch(POLZA_URL+"/media/"+encodeURIComponent(id));
     const data=await r.json().catch(()=>({}));
     if(!r.ok)throw new Error(data.error?.message||data.detail||("Polza: HTTP "+r.status));
     state.videoJob=data;
