@@ -189,12 +189,12 @@ async function generateAiVideo(){
   const p=state.lastShort;if(!p){addLog("Нет Shorts-плана","ERROR");alert("Сначала создай Shorts-план.");return}
   const key=getKey();if(!key){addLog("API-ключ Polza не найден","ERROR");openSettings();return}
   const model=$("videoModel")?.value||"kling/v3";
-  const duration=Math.max(3,Math.min(15,Number($("videoDuration")?.value||10)));
+  const duration=Math.max(3,Math.min(15,Number($("videoDuration")?.value||10)));\n  const durationValue=String(duration);
   const status=$("videoGenerationStatus"),button=$("generateAiVideo");
   if(status)status.innerHTML="<span>Запускаю Kling 3.0…</span>";
   if(button){button.disabled=true;button.textContent="Генерация…"}
   try{
-    const r=await fetch(POLZA_URL+"/media",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},body:JSON.stringify({model,input:{prompt:buildVideoPrompt(p),aspect_ratio:"9:16",duration,images:[],mode:"std",sound:true},async:true})});
+    const r=await fetch(POLZA_URL+"/media",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},body:JSON.stringify({model,input:{prompt:buildVideoPrompt(p),aspect_ratio:"9:16",duration:durationValue,images:[],mode:"std",sound:true},async:true})});
     const data=await r.json().catch(()=>({}));
     if(!r.ok)throw new Error(data.error?.message||data.detail||("Polza: HTTP "+r.status));
     if(!data.id)throw new Error("Polza не вернула ID задачи.");
