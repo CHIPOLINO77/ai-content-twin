@@ -5,7 +5,7 @@ export default async function handler(req,res) {
   try{
     const r=await fetch("https://polza.ai/api/v1/media",{
       method:"POST",
-      headers:{"Content-Type":"application/json","Authorization:"Bearer "+key},
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},
       body:JSON.stringify(req.body)
     });
     const text=await r.text();
