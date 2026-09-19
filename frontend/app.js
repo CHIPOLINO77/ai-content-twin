@@ -210,5 +210,13 @@ $("generateHooks")?.addEventListener("click",async()=>{
     $("hookResults").innerHTML=Array.isArray(list)&&list.length?list.map((x,i)=>`<div class="hook-card"><span>${i+1}</span><div><strong>${esc(x.hook||"")}</strong><p>${esc(x.visual||"")}</p><small>${esc(x.curiosity||"")}</small></div></div>`).join(""):"<p>Не удалось разобрать ответ модели.</p>";
   }catch(e){$("hookResults").innerHTML="<p>Ошибка: "+esc(e.message)+"</p>"}
 });
+$("refreshAnalytics")?.addEventListener("click",()=>{updateAnalytics();});
+$("resetWorkspace")?.addEventListener("click",()=>{
+  if(!confirm("Удалить локальный профиль, расшифровку и список видео?"))return;
+  localStorage.removeItem("CONTENT_TWIN_PROFILE");localStorage.removeItem("CONTENT_TWIN_TRANSCRIPT");localStorage.removeItem("CONTENT_TWIN_VIDEOS");
+  state.profile=null;state.videos=[];if($("sourceTranscript"))$("sourceTranscript").value="";
+  renderVideos();$("profileView").innerHTML="";$("fullProfile").innerHTML="";$("profileState").textContent="Профиль не создан";
+  $("profileEmpty")?.classList.remove("hidden");$("profileView")?.classList.add("hidden");updateAnalytics();
+});
 updateAnalytics();
 updateStatus();loadVideos();loadProfile();
