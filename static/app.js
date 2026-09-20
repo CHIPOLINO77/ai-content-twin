@@ -33,7 +33,7 @@ async function autoTranscribe(){
     const b64=btoa(bin);
     const offset=chunkIndex*CHUNK_SECONDS;chunkIndex++;
     const r=await fetch(API+"/transcribe",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({audio:b64,mime,language:"ru",model:"aiesa/transcribe-fast"})});
+      body:JSON.stringify({audio:b64,mime,language:"ru",model:"openai/whisper-large-v3"})});
     const raw=await r.text();let d={};try{d=JSON.parse(raw)}catch{}
     if(!r.ok)throw Error(d.error||d.detail||("HTTP "+r.status));
     const segments=Array.isArray(d.segments)?d.segments:[];
