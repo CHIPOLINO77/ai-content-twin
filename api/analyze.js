@@ -15,7 +15,7 @@ ${transcript.slice(0,50000)}`;
     const content=data.choices?.[0]?.message?.content||"";
     const raw=content.match(/\{[\s\S]*\}/)?.[0]||'{"clips":[]}';
     let result;try{result=JSON.parse(raw)}catch{result={clips:[]}};
-    result.clips=(Array.isArray(result.clips)?result.clips:[]).filter(x=>Number.isFinite(Number(x.start))&&Number.isFinite(Number(x.end))&&Number(x.end)>Number(x.start)).map(x=>({...x,start:Math.max(0,Number(x.start)),end:duration?Math.min(Number(duration),Number(x.end)):Number(x.end),score:Math.max(0,Math.min(100,Number(x.score)||0))})).sort((a,b)=>b.score-a.score).slice(0,20);
+    result.clips=(Array.isArray(result.clips)?result.clips:[]).filter(x=>Number.isFinite(Number(x.start))&&Number.isFinite(Number(x.end))&&Number(x.end)>Number(x.start)&&Number(x.end)-Number(x.start)>=Number(req.body?.min_duration||15)).map(x=>({...x,start:Math.max(0,Number(x.start)),end:duration?Math.min(Number(duration),Number(x.end)):Number(x.end),score:Math.max(0,Math.min(100,Number(x.score)||0))})).sort((a,b)=>b.score-a.score).slice(0,20);
     return res.status(200).json(result);
   }catch(e){return res.status(502).json({error:"Polza connection failed",detail:e.message})}
 }
