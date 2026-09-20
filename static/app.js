@@ -26,32 +26,32 @@ async function autoTranscribe(){
   const audioStream=new MediaStream([track]);
   const mime=MediaRecorder.isTypeSupported("audio/webm;codecs=opus")?"audio/webm;codecs=opus":"audio/webm";
   const recorder=new MediaRecorder(audioStream,{mimeType:mime});
-  const pending=[]; let sent=0, completed=0, failed=false;
+  let queue=Promise.resolve(),completed=0,chunkIndex=0;
   const sendChunk=async blob=>{
     const buf=await blob.arrayBuffer();const bytes=new Uint8Array(buf);let bin="";
     for(let i=0;i<bytes.length;i+=0x8000)bin+=String.fromCharCode(...bytes.subarray(i,i+0x8000));
     const b64=btoa(bin);
-    const offset=sent; sent+=60;
+    const offset=chunkIndex*60;chunkIndex++;
     const r=await fetch(API+"/transcribe",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({audio:b64,mime,language:"ru",model:"openai/whisper-large-v3",offset})});
+      body:JSON.stringify({audio:b64,mime,language:"ru",model:"openai/whisper-1"})});
     const raw=await r.text();let d={};try{d=JSON.parse(raw)}catch{}
     if(!r.ok)throw Error(d.error||d.detail||("HTTP "+r.status));
-    const text=d.text||"";
+    const segments=Array.isArray(d.segments)?d.segments:[];
+    const text=segments.length
+      ?segments.map(s=>"["+tm(Number(s.start)+offset)+"] "+String(s.text||"").trim()).filter(Boolean).join(" ")
+      :(d.text||"");
     if(text)$("transcript").value+=($("transcript").value?" ":"")+text;
     completed++;
     $("transcribeHint").textContent="Расшифровано примерно "+Math.min(state.duration,completed*60).toFixed(0)+" из "+state.duration.toFixed(0)+" сек.";
   };
-  recorder.ondataavailable=e=>{if(e.data.size)pending.push(sendChunk(e.data).catch(err=>{failed=true;throw err}))};
+  recorder.ondataavailable=e=>{if(e.data.size)queue=queue.then(()=>sendChunk(e.data))};
   recorder.start(60000);
   await v.play();
   await new Promise(resolve=>{const tick=()=>v.ended?resolve():requestAnimationFrame(tick);tick()});
   try{recorder.stop()}catch{}
-  await new Promise(resolve=>{const check=()=>recorder.state==="inactive"?resolve():setTimeout(check,100)});
-  const results=await Promise.allSettled(pending);
-  const bad=results.find(x=>x.status==="rejected");
-  if(bad)throw bad.reason;
-  if(failed)throw Error("Не удалось распознать один из аудиофрагментов.");
-  $("transcribeHint").textContent="Расшифровка готова. Теперь можно запускать поиск лучших моментов.";
+  await new Promise(resolve=>{const check=()=>recorder.state==="inactive"?resolve():setTimeout(check,100);check()});
+  await queue;
+  $("transcribeHint").textContent="Расшифровка готова с таймкодами. Теперь можно искать лучшие моменты.";
   $("engineState").textContent="READY";
  }catch(e){
   $("engineState").textContent="ERROR";
