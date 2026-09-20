@@ -343,3 +343,52 @@ $("resetWorkspace")?.addEventListener("click",()=>{
 });
 updateAnalytics();
 updateStatus();loadVideos();loadProfile();
+
+
+/* Semantic clipping engine */
+state.analysis=state.analysis||null;state.activeVideo=state.activeVideo||null;
+function formatTime(sec){sec=Math.max(0,Number(sec)||0);return String(Math.floor(sec/60)).padStart(2,"0")+":"+String(Math.floor(sec%60)).padStart(2,"0")}
+function uploadLocalInfo(file){
+ if(!file.type.startsWith("video/"))return;
+ const video={id:(crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random())),name:file.name,size:formatSize(file.size),file,objectUrl:URL.createObjectURL(file),duration:null};
+ state.videos.push(video);state.activeVideo=video;renderVideos();
+ const row=document.createElement("div");row.className="uploadrow";row.textContent=file.name+" • "+formatSize(file.size)+" • готов к анализу";$("uploads")?.append(row);
+ const probe=document.createElement("video");probe.preload="metadata";probe.src=video.objectUrl;probe.onloadedmetadata=()=>{video.duration=probe.duration;renderVideos()};
+ addLog("Видео добавлено: "+file.name,"OK");updateAnalytics();
+}
+function renderVideos(){
+ const list=$("videoList"),count=$("videoCount");if(!list)return;count.textContent=String(state.videos.length);
+ list.innerHTML=state.videos.length?state.videos.map((v,i)=>'<div class="video-row"><div><b>'+esc(v.name)+'</b><small>'+esc(v.size)+' • '+(v.duration?formatTime(v.duration):"локальный исходник")+'</small></div><div><button class="small" data-use-video="'+i+'">Анализировать</button> <button class="small" data-remove-video="'+i+'">Удалить</button></div></div>').join(""):'<p>Видео пока не добавлены.</p>';
+ list.querySelectorAll("[data-use-video]").forEach(b=>b.onclick=()=>{state.activeVideo=state.videos[Number(b.dataset.useVideo)];$("analysisState").textContent="VIDEO SELECTED";addLog("Выбран исходник для анализа","INFO")});
+ list.querySelectorAll("[data-remove-video]").forEach(b=>b.onclick=()=>{const v=state.videos.splice(Number(b.dataset.removeVideo),1)[0];if(v?.objectUrl)URL.revokeObjectURL(v.objectUrl);if(state.activeVideo===v)state.activeVideo=null;saveVideos();renderVideos();updateAnalytics()});
+}
+async function startSemanticAnalysis(){
+ const transcript=$("sourceTranscript")?.value.trim()||localStorage.getItem("CONTENT_TWIN_TRANSCRIPT")||"";
+ const video=state.activeVideo||state.videos.find(v=>v.file);
+ if(!video?.file){alert("Сначала выбери видеофайл.");return}
+ if(!transcript){alert("Для semantic clipping нужна расшифровка. Вставь её в AI-профиль.");showSection("profile");return}
+ $("analysisState").textContent="ANALYZING…";addLog("Запуск semantic analysis: "+video.name,"INFO");
+ try{
+  const r=await fetch(POLZA_URL+"/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({transcript,duration:video.duration||0,language:"ru",max_clips:12})});
+  const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||data.detail||("Analysis HTTP "+r.status));
+  state.analysis=data;renderAnalysis(data.clips||[]);$("analysisState").textContent=(data.clips||[]).length+" CLIPS";addLog("AI нашёл "+(data.clips||[]).length+" кандидатов","OK");
+ }catch(e){$("analysisState").textContent="ERROR";addLog(e.message,"ERROR");alert(e.message)}
+}
+function renderAnalysis(clips){
+ const panel=$("analysis-panel-output");if(!panel)return;
+ panel.innerHTML=clips.length?clips.map((c,i)=>'<div class="clip-card"><div class="clip-rank">'+String(i+1).padStart(2,"0")+'</div><div class="clip-main"><div class="clip-top"><b>'+esc(c.title||"AI clip")+'</b><strong>'+esc(c.score||0)+'</strong></div><div class="clip-time">'+formatTime(c.start)+' — '+formatTime(c.end)+' · '+formatTime((c.end||0)-(c.start||0))+'</div><p>'+esc(c.reason||"")+'</p><div class="clip-meta"><span>HOOK: '+esc(c.hook||"—")+'</span><span>CAPTION: '+esc(c.caption||"—")+'</span></div><button class="small" data-make-clip="'+i+'">Собрать клип локально</button></div></div>').join(""):'<div class="analysis-placeholder"><h3>AI не нашёл кандидатов</h3><p>Проверь расшифровку и длительность исходника.</p></div>';
+ panel.querySelectorAll("[data-make-clip]").forEach(b=>b.onclick=()=>makeLocalClip(clips[Number(b.dataset.makeClip)]));
+}
+async function makeLocalClip(clip){
+ const video=state.activeVideo;if(!video?.objectUrl)return;
+ const source=document.createElement("video");source.src=video.objectUrl;source.preload="auto";source.playsInline=true;
+ await new Promise((resolve,reject)=>{source.onloadedmetadata=resolve;source.onerror=reject});
+ const start=Math.max(0,Number(clip.start)||0),end=Math.min(source.duration,Number(clip.end)||0);if(!(end>start)){alert("Неверный таймкод клипа.");return}
+ const stream=source.captureStream?source.captureStream():null;if(!stream){alert("Браузер не поддерживает экспорт локального клипа.");return}
+ const mime=MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")?"video/webm;codecs=vp9,opus":"video/webm";
+ const chunks=[],rec=new MediaRecorder(stream,{mimeType:mime});rec.ondataavailable=e=>e.data.size&&chunks.push(e.data);$("analysisState").textContent="EXPORTING…";
+ await new Promise((resolve,reject)=>{rec.onerror=reject;rec.onstop=resolve;source.currentTime=start;source.onseeked=async()=>{try{rec.start(250);await source.play();const tick=()=>{if(source.currentTime>=end){source.pause();rec.stop()}else requestAnimationFrame(tick)};tick()}catch(e){reject(e)}}});
+ const blob=new Blob(chunks,{type:mime}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="content-twin-"+Math.round(start)+"-"+Math.round(end)+".webm";a.click();
+ $("analysisState").textContent="CLIP EXPORTED";addLog("Клип экспортирован: "+formatTime(start)+"–"+formatTime(end),"OK");setTimeout(()=>URL.revokeObjectURL(url),10000);
+}
+$("startAnalysis")?.addEventListener("click",startSemanticAnalysis);
