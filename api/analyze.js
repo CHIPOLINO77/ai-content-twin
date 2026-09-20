@@ -9,7 +9,7 @@ score 0-100. start/end в секундах. Не создавай пересек
 РАСШИФРОВКА:
 ${transcript.slice(0,50000)}`;
   try{
-    const r=await fetch("https://polza.ai/api/v1/chat/completions",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},body:JSON.stringify({model:"openai/gpt-6-astra",messages:[{role:"system",content:"Ты точный JSON API для анализа видео."},{role:"user",content:prompt}],temperature:.2})});
+    const r=await fetch("https://polza.ai/api/v1/chat/completions",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},body:JSON.stringify({model:"openai/gpt-4.1-nano",messages:[{role:"system",content:"Ты точный JSON API для анализа видео."},{role:"user",content:prompt}],temperature:.2})});
     const text=await r.text();if(!r.ok)return res.status(r.status).send(text);
     let data;try{data=JSON.parse(text)}catch{return res.status(502).json({error:"Invalid upstream JSON"})}
     const content=data.choices?.[0]?.message?.content||"";
