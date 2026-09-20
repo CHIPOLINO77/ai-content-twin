@@ -1,144 +1,65 @@
 <!doctype html>
-<html lang="ru">
-<head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Content Twin — AI Video Studio</title>
-<link rel="stylesheet" href="/static/style.css?v=20260921-01">
-</head>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Content Twin — AI Clips</title><link rel="stylesheet" href="./static/style.css?v=20260921-01"></head>
 <body>
-<div class="app-shell">
-  <aside class="sidebar">
-    <div class="brand"><span class="brand-mark">✦</span><span>CONTENT TWIN</span></div>
-    <div class="workspace-switch"><span class="avatar">A</span><div><b>Амир</b><small>Creator workspace</small></div><span>⌄</span></div>
-    <div class="side-label">WORKSPACE</div>
-    <nav>
-      <button class="active" data-section="dashboard"><span>⌂</span> Обзор</button>
-      <button data-section="videos"><span>▣</span> Видео</button>
-      <button data-section="profile"><span>◎</span> AI-профиль</button>
-      <button data-section="ideas"><span>✦</span> Идеи</button>
-      <button data-section="generator"><span>✎</span> Сценарист</button>
-      <button data-section="studio"><span>▶</span> Shorts Studio</button>
-      <button data-section="hooks"><span>↗</span> Hook Lab</button>
-      <button data-section="analytics"><span>◫</span> Аналитика</button>
-      <button data-section="logs"><span>◉</span> Система</button>
-    </nav>
-    <div class="sidebar-bottom">
-      <div class="credits"><span>AI credits</span><b>●</b><strong>∞</strong></div>
-      <button class="settings-btn" id="settingsBtn">⚙ Настройки</button>
-      <div class="status"><i></i><span id="apiStatus">AI Engine</span></div>
+<div class="shell">
+<aside class="side">
+  <div class="brand"><div class="logo">C</div><div><b>CONTENT TWIN</b><small>AI CLIP STUDIO</small></div></div>
+  <div class="nav-label">WORKSPACE</div>
+  <button class="nav active" data-view="create"><span>＋</span> Новый проект</button>
+  <button class="nav" data-view="projects"><span>▣</span> Проекты <i id="projectCount">0</i></button>
+  <div class="side-spacer"></div>
+  <div class="server"><i></i><span>AI engine</span><b id="engineState">READY</b></div>
+  <button class="settings" id="settingsBtn">⚙ Настройки</button>
+  <div class="user">CT <span>Content Twin</span></div>
+</aside>
+
+<main class="main">
+<header class="header"><div><div class="kicker">AI VIDEO WORKSPACE</div><h1 id="pageTitle">Преврати длинное видео<br><em>в готовые клипы.</em></h1><p id="pageSub">Загрузи исходник. AI найдёт сильные моменты, расставит таймкоды и подготовит вертикальные ролики.</p></div><button class="primary" id="newProject">＋ Новый проект</button></header>
+
+<section id="view-create" class="view active">
+  <div class="dropzone" id="dropzone">
+    <input id="fileInput" type="file" accept="video/mp4,video/quicktime,video/webm,video/x-msvideo" hidden>
+    <div class="drop-icon">↑</div><h2>Перетащи видео сюда</h2><p>или выбери файл с компьютера</p>
+    <button class="primary" id="chooseFile">Выбрать видео</button>
+    <small>MP4 · MOV · WEBM · AVI</small>
+  </div>
+  <div id="sourceCard" class="source-card hidden">
+    <div class="source-thumb"><video id="sourceVideo" controls preload="metadata"></video></div>
+    <div class="source-info"><div class="kicker">SOURCE VIDEO</div><h3 id="sourceName">—</h3><div class="source-meta"><span id="sourceDuration">—</span><span id="sourceSize">—</span></div>
+      <div class="progress"><i id="uploadProgress"></i></div>
+      <button class="ghost" id="removeSource">Удалить</button>
     </div>
-  </aside>
+  </div>
 
-  <main class="main">
-    <header class="topbar">
-      <div><span class="eyebrow">AI VIDEO WORKSPACE</span><h1 id="pageTitle">Преврати длинное видео в контент.</h1><p id="pageSubtitle">AI находит сильные моменты, понимает смысл и собирает Shorts в стиле твоего контента.</p></div>
-      <div class="top-actions"><button class="ghost" data-jump="videos">+ Добавить видео</button><button class="profile-chip">A</button></div>
-    </header>
+  <div class="settings-grid">
+    <div class="panel"><div class="panel-title">1 · РАСПОЗНАВАНИЕ</div>
+      <label>Текст расшифровки</label><textarea id="transcript" placeholder="Вставь готовую расшифровку. Если в тексте есть таймкоды — AI использует их."></textarea>
+      <div class="hint">На следующем этапе подключим автоматическую транскрибацию через Polza Whisper.</div>
+    </div>
+    <div class="panel"><div class="panel-title">2 · ФОРМАТ</div>
+      <div class="choice-row"><button class="choice active" data-ratio="9:16">9:16<span>Shorts / Reels</span></button><button class="choice" data-ratio="1:1">1:1<span>Square</span></button></div>
+      <label>Количество кандидатов</label><select id="clipCount"><option value="6">6 лучших</option><option value="10" selected>10 лучших</option><option value="15">15 лучших</option></select>
+      <label>Минимальная длина</label><select id="minLength"><option value="15">15 сек</option><option value="25" selected>25 сек</option><option value="35">35 сек</option></select>
+    </div>
+  </div>
+  <button class="analyze" id="startAnalysis" disabled><span>✦</span> Найти лучшие моменты</button>
+  <div class="process" id="process"><div class="step active"><b>01</b><span>Исходник</span></div><div class="line"></div><div class="step"><b>02</b><span>AI анализ</span></div><div class="line"></div><div class="step"><b>03</b><span>Клипы</span></div></div>
+</section>
 
-    <section id="dashboard" class="section">
-      <div class="hero-card">
-        <div class="hero-copy">
-          <div class="hero-badge"><span></span> AI CLIP ENGINE <b>LIVE</b></div>
-          <h2>1 длинное видео<br><em>→ десятки сильных клипов.</em></h2>
-          <p>Загрузи выпуск, подкаст, стрим или лекцию. Content Twin расшифрует материал, разобьёт его по смыслу и найдёт моменты с сильным hook, эмоцией, конфликтом или неожиданной мыслью.</p>
-          <div class="hero-actions"><button class="primary big" data-jump="videos">Начать анализ <span>→</span></button><button class="ghost" data-jump="profile">Настроить мой стиль</button></div>
-          <div class="trust-row"><span>✓ Без ручного монтажа</span><span>✓ Вертикальный 9:16</span><span>✓ Субтитры + hook</span></div>
-        </div>
-        <div class="hero-preview">
-          <div class="preview-top"><span>ANALYSIS PREVIEW</span><b>01:24:37</b></div>
-          <div class="timeline"><i style="left:9%"></i><i style="left:22%"></i><i class="hot" style="left:43%"></i><i style="left:59%"></i><i class="hot" style="left:76%"></i><i style="left:89%"></i></div>
-          <div class="score-list">
-            <div><span>00:42:17</span><strong>96</strong><p>Сильный конфликт · эмоциональный пик</p></div>
-            <div><span>00:18:44</span><strong>91</strong><p>Неожиданный факт · хороший hook</p></div>
-            <div><span>01:03:12</span><strong>88</strong><p>История · высокая ценность</p></div>
-          </div>
-          <div class="preview-footer">AI SCORE <b>смысл + hook + эмоция + контекст</b></div>
-        </div>
-      </div>
+<section id="view-projects" class="view">
+  <div class="section-head"><div><div class="kicker">PROJECTS</div><h2>Мои проекты</h2><p>Здесь остаются только созданные проекты.</p></div></div>
+  <div id="projectsList" class="projects-list"></div>
+</section>
 
-      <div class="section-head"><div><span class="eyebrow">WORKFLOW</span><h2>Из исходника в готовый контент</h2></div></div>
-      <div class="workflow-grid">
-        <div class="workflow-card"><span>01</span><b>Загрузи</b><p>MP4 или ссылка на исходное видео.</p></div>
-        <div class="workflow-card"><span>02</span><b>Проанализируй</b><p>AI разбирает речь, смысл, эмоции и структуру.</p></div>
-        <div class="workflow-card"><span>03</span><b>Выбери моменты</b><p>Получаешь рейтинг и объяснение каждого клипа.</p></div>
-        <div class="workflow-card"><span>04</span><b>Собери Shorts</b><p>9:16, субтитры, заголовок, CTA и экспорт.</p></div>
-      </div>
-      <div class="stats-strip"><div><strong id="dashClips">0</strong><span>клипов найдено</span></div><div><strong id="dashVideoState">0</strong><span>исходников</span></div><div><strong id="dashProfileState">—</strong><span>AI-профиль</span></div><div><strong>9:16</strong><span>формат</span></div></div>
-    </section>
-
-    <section id="videos" class="section hidden">
-      <div class="page-heading"><div><span class="eyebrow">SOURCE LIBRARY</span><h2>Мои видео</h2><p>Добавь исходник или вставь ссылку. После этого запусти AI-анализ.</p></div></div>
-      <div class="upload-layout">
-        <div class="upload-card" id="dropzone">
-          <div class="upload-icon">↑</div><h3>Перетащи видео сюда</h3><p>или выбери файл с компьютера</p>
-          <input id="fileInput" type="file" accept="video/*" multiple hidden>
-          <button class="primary" id="pick">Выбрать видео</button>
-          <div class="upload-meta">MP4 · MOV · WebM · локально в браузере</div>
-          <div id="uploads"></div>
-        </div>
-        <div class="link-card">
-          <div class="mini-label">VIDEO URL</div><input id="sourceUrl" placeholder="https://youtube.com/watch?v=...">
-          <button class="ghost wide" id="analyzeUrl">Добавить ссылку →</button>
-          <div class="source-note">Поддержка URL зависит от подключённого источника. Для локального MVP используй файл.</div>
-        </div>
-      </div>
-      <div class="library-card card"><div class="cardhead"><span>LIBRARY</span><b id="videoCount">0</b></div><div id="videoList" class="video-list"></div></div>
-      <div class="analysis-panel card"><div class="cardhead"><span>AI ANALYSIS</span><b id="analysisState">READY</b></div><div class="analysis-placeholder"><div class="scan-ring">✦</div><h3>Готово к анализу</h3><p>AI разберёт расшифровку, найдёт сильные моменты и выдаст таймкоды с рейтингом.</p><button class="primary" id="startAnalysis">Запустить semantic analysis</button></div><div id="analysis-panel-output" class="clip-results"></div></div>
-    </section>
-
-    <section id="profile" class="section hidden">
-      <div class="page-heading"><div><span class="eyebrow">CONTENT INTELLIGENCE</span><h2>AI-профиль автора</h2><p>Дай Twin примеры твоей речи — он соберёт стиль, хуки и правила генерации.</p></div></div>
-      <div class="profile-layout">
-        <div class="card profile-input-card"><div class="cardhead"><span>SOURCE TRANSCRIPT</span><b>01</b></div><textarea id="sourceTranscript" class="source-input" placeholder="Вставь расшифровку одного или нескольких своих роликов…"></textarea><button class="primary wide" id="buildProfile">✦ Построить AI-профиль</button><div id="profileState" class="inline-state">Не создан</div></div>
-        <div class="card profile-output-card"><div class="cardhead"><span>PROFILE</span><b>AI ANALYSIS</b></div><div id="profileEmpty" class="analysis-placeholder"><div class="scan-ring">◎</div><h3>Профиль ещё не создан</h3><p>После анализа здесь появятся голос, тон, темп, темы, hook patterns и правила генерации.</p></div><div id="profileView" class="profile-view hidden"></div></div>
-      </div>
-      <div class="card"><div class="cardhead"><span>FULL PROFILE</span><b>CONTENT TWIN</b></div><div id="fullProfile" class="profile-view"></div></div>
-    </section>
-
-    <section id="ideasSection" class="section hidden">
-      <div class="page-heading"><div><span class="eyebrow">IDEA ENGINE</span><h2>Idea Lab</h2><p>Генерируй идеи, опираясь на тему и твой Content Profile.</p></div></div>
-      <div class="card idea-hero"><div><span class="hero-badge"><span></span> POLZA AI</span><h3>Что будем превращать в Shorts?</h3><p>Укажи тему — AI предложит форматы, углы подачи и сильные первые фразы.</p></div><div class="idea-form"><input id="topic" placeholder="Например: 10 ошибок начинающего блогера"><button class="primary" id="generate">Сгенерировать идеи →</button></div></div>
-      <div id="ideas" class="ideas-grid"></div>
-    </section>
-
-    <section id="generator" class="section hidden">
-      <div class="page-heading"><div><span class="eyebrow">AI WRITER</span><h2>Сценарист</h2><p>Собери сценарий в голосе твоего Content Twin.</p></div></div>
-      <div class="generator-layout"><div class="card"><div class="cardhead"><span>PROMPT</span><b>CONTENT TWIN</b></div><textarea id="generatorPrompt" class="source-input" placeholder="Например: сценарий Shorts на 45 секунд про то, почему люди бросают вести блог. Нужен сильный hook и CTA."></textarea><button class="primary wide" id="generateContent">✦ Сгенерировать сценарий</button><button class="ghost wide hidden" id="sendGeneratedToVideo">→ Передать в Shorts Studio</button></div><div class="card result-card"><div class="cardhead"><span>OUTPUT</span><b>AI</b></div><div class="result-actions"><button class="small" id="copyGenerated">Копировать</button><button class="small" id="downloadGenerated">TXT</button></div><pre id="generatedContent" class="generated">Здесь появится результат…</pre></div></div>
-    </section>
-
-    <section id="studio" class="section hidden">
-      <div class="page-heading"><div><span class="eyebrow">SHORT-FORM PRODUCTION</span><h2>Shorts Studio</h2><p>От идеи до структурированного ролика: hook → beats → визуал → captions → CTA.</p></div></div>
-      <div class="studio-grid"><div class="card studio-controls"><div class="cardhead"><span>SETUP</span><b>01</b></div><label>ТЕМА</label><input id="studioTopic" placeholder="Тема ролика"><label>ПЛАТФОРМА</label><select id="studioPlatform"><option>YouTube Shorts</option><option>TikTok</option><option>Instagram Reels</option></select><label>ДЛИТЕЛЬНОСТЬ</label><select id="studioDuration"><option value="15">15 сек</option><option value="30">30 сек</option><option value="45" selected>45 сек</option><option value="60">60 сек</option></select><label>ЦЕЛЬ</label><input id="studioGoal" placeholder="Удержание, комментарии, подписка…"><button class="primary wide" id="createShort">Создать план →</button><div class="divider"></div><label>AI VIDEO MODEL</label><select id="videoModel"><option value="kling/v3" selected>Kling 3.0 · 9:16 · sound</option></select><label>AI VIDEO LENGTH</label><select id="videoDuration"><option value="5">5 сек</option><option value="10" selected>10 сек</option><option value="15">15 сек</option></select><button class="ghost wide" id="generateAiVideo">✦ Сгенерировать AI-видео</button><div id="videoGenerationStatus" class="video-generation-status"></div></div><div class="card studio-result-wrap"><div class="cardhead"><span>OUTPUT</span><b>STRUCTURED</b></div><div id="videoPromptPreview" class="video-prompt-preview">Промпт для Kling появится после генерации.</div><div id="studioResult" class="studio-result"><div class="empty-state"><div class="scan-ring">▶</div><h3>Создай первый Shorts-план</h3><p>Здесь появятся hook, сценарий по таймкодам, визуальные подсказки, субтитры и CTA.</p></div></div></div></div>
-    </section>
-
-    <section id="hooks" class="section hidden"><div class="page-heading"><div><span class="eyebrow">RETENTION LAB</span><h2>Hook Lab</h2><p>Создай несколько вариантов первых секунд и сравни их по структуре.</p></div></div><div class="card"><div class="hook-lab-form"><input id="hookTopic" placeholder="Тема ролика"><select id="hookCount"><option value="5">5 хуков</option><option value="10" selected>10 хуков</option><option value="20">20 хуков</option></select><button class="primary" id="generateHooks">Сгенерировать</button></div><div id="hookResults" class="hook-results"><div class="empty-state">Готово к тестированию hooks.</div></div></div></section>
-
-    <section id="analytics" class="section hidden"><div class="page-heading"><div><span class="eyebrow">CONTENT LOOP</span><h2>Аналитика</h2><p>Здесь будет цикл: опубликовано → просмотры → удержание → новые hooks.</p></div></div><div class="analytics-grid"><div class="metric"><span>Видео</span><strong id="metricVideos">0</strong></div><div class="metric"><span>Профиль</span><strong id="metricProfile">—</strong></div><div class="metric"><span>Идей</span><strong id="metricIdeas">0</strong></div><div class="metric"><span>Последний Shorts</span><strong id="metricShort">—</strong></div></div><div class="card analytics-card"><div class="cardhead"><span>PERFORMANCE LOOP</span><b>COMING NEXT</b></div><div class="analysis-placeholder"><div class="scan-ring">◫</div><h3>Подключим реальные метрики</h3><p>Просмотры, лайки, комментарии и удержание будут использоваться для следующего цикла генерации.</p></div></div><div class="analytics-actions"><button class="small" id="refreshAnalytics">Обновить</button><button class="small" id="resetWorkspace">Сбросить локальные данные</button></div></section>
-
-    <section id="logs" class="section hidden"><div class="page-heading"><div><span class="eyebrow">SYSTEM</span><h2>Журнал</h2><p>Диагностика AI Engine и действий интерфейса.</p></div></div><div class="card logs-card"><div class="cardhead"><span>SYSTEM LOGS</span><b id="logCount">0</b></div><div id="logWindow" class="log-window"><div class="log-empty">Логи появятся здесь…</div></div></div></section>
-  </main>
+<section id="results" class="results hidden">
+  <div class="results-top"><div><div class="kicker">AI ANALYSIS COMPLETE</div><h2>Найденные моменты</h2><p id="resultSummary">—</p></div><div class="results-actions"><button class="ghost" id="backCreate">← Новый анализ</button></div></div>
+  <div class="result-layout">
+    <div class="result-source panel"><div class="panel-title">SOURCE</div><video id="resultVideo" controls></video><div id="timeline" class="timeline"></div></div>
+    <div><div id="clipResults" class="clip-results"></div></div>
+  </div>
+</section>
+</main>
 </div>
 
-<div id="settingsModal" class="modal hidden"><div class="modal-card"><div class="cardhead"><span>AI SETTINGS</span><button class="close" id="closeSettingsTop">×</button></div><h2>Polza AI</h2><p>Сервер использует переменную <b>POLZA_API_KEY</b>. Ключ не нужно публиковать в GitHub.</p><label>Локальный ключ (не обязателен)</label><input id="polzaKey" type="password" autocomplete="off" placeholder="оставь пустым для server proxy"><label>Модель</label><input id="polzaModel" type="text" placeholder="openai/gpt-6-astra"><div class="modal-actions"><button class="small" id="closeSettings">Закрыть</button><button class="primary" id="saveSettings">Сохранить</button></div></div></div>
-
-<script>
-(function(){
-  function show(name){
-    document.querySelectorAll(".section").forEach(s=>s.classList.add("hidden"));
-    const target=document.getElementById(name==="ideas"?"ideasSection":name); if(target)target.classList.remove("hidden");
-    document.querySelectorAll("nav button[data-section]").forEach(b=>b.classList.toggle("active",b.dataset.section===name));
-    const titles={dashboard:"Преврати длинное видео в контент.",videos:"Медиатека исходников",profile:"AI-профиль автора",ideas:"Идеи, которые можно снять",generator:"Сценарист Content Twin",studio:"Shorts Studio",hooks:"Hook Lab",analytics:"Твой content loop",logs:"Система и диагностика"};
-    const p=document.getElementById("pageTitle"); if(p)p.textContent=titles[name]||"Content Twin";
-  }
-  document.querySelectorAll("nav button[data-section]").forEach(b=>b.addEventListener("click",()=>show(b.dataset.section)));
-  document.querySelectorAll("[data-jump]").forEach(b=>b.addEventListener("click",()=>show(b.dataset.jump)));
-  const m=document.getElementById("settingsModal");
-  document.getElementById("settingsBtn")?.addEventListener("click",()=>m.classList.remove("hidden"));
-  document.getElementById("closeSettings")?.addEventListener("click",()=>m.classList.add("hidden"));
-  document.getElementById("closeSettingsTop")?.addEventListener("click",()=>m.classList.add("hidden"));
-  document.getElementById("analyzeUrl")?.addEventListener("click",()=>{const v=document.getElementById("sourceUrl")?.value.trim();if(v){localStorage.setItem("CONTENT_TWIN_SOURCE_URL",v);document.getElementById("analysisState").textContent="URL SAVED";}});
-  document.getElementById("startAnalysis")?.addEventListener("click",()=>{document.getElementById("analysisState").textContent="BACKEND REQUIRED";});
-})();
-</script>
-<script src="./static/app.js?v=20260921-01"></script>
-</body></html>
+<div id="settingsModal" class="modal hidden"><div class="modal-box"><button class="modal-close" id="closeSettings">×</button><div class="kicker">SETTINGS</div><h2>Настройки</h2><p>API-ключ хранится на сервере Vercel. В браузер его больше вводить не нужно.</p><div class="server-box"><i></i> Server API <b id="apiState">CHECKING</b></div><button class="ghost wide" id="closeSettings2">Закрыть</button></div></div>
+<script src="./static/app.js?v=20260921-01"></script></body></html>
