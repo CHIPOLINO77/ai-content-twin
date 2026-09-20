@@ -392,3 +392,5 @@ async function makeLocalClip(clip){
  $("analysisState").textContent="CLIP EXPORTED";addLog("Клип экспортирован: "+formatTime(start)+"–"+formatTime(end),"OK");setTimeout(()=>URL.revokeObjectURL(url),10000);
 }
 $("startAnalysis")?.addEventListener("click",startSemanticAnalysis);
+
+function saveVideos(){try{localStorage.setItem("CONTENT_TWIN_VIDEOS",JSON.stringify(state.videos.map(v=>({id:v.id,name:v.name,size:v.size,duration:v.duration}))))}catch{}}
