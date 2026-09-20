@@ -1,0 +1,74 @@
+<!doctype html><html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AI Content Twin</title><link rel="stylesheet" href="/static/style.css"></head><body>
+<div class="app-shell">
+<aside class="sidebar">
+  <div class="logo"><span>✦</span> Content Twin</div>
+  <div class="side-label">WORKSPACE</div>
+  <nav>
+    <button class="active" data-section="dashboard">Dashboard</button>
+    <button data-section="videos">Мои видео</button>
+    <button data-section="profile">Профиль автора</button>
+    <button data-section="ideas">Идеи</button>
+    <button data-section="generator">Генератор</button>
+    <button data-section="studio">Shorts Studio</button>
+    <button data-section="hooks">Hook Lab</button>
+    <button data-section="analytics">Analytics</button>
+  <button class="nav-item" data-section="logs"><span>◉</span><span>Logs</span></button></nav>
+  <div class="status"><i></i><span id="apiStatus">Нужен API-ключ Polza</span></div>
+</aside>
+<main class="main">
+<header class="topbar"><div><span class="eyebrow">AI CREATOR OS</span><h1 id="pageTitle">Your content. Amplified.</h1><p id="pageSubtitle">Преврати свои материалы в систему производства контента.</p></div><button class="settings-btn" id="settingsBtn">⚙ Настройки</button></header>
+
+<section id="dashboard" class="section">
+<div class="hero-card"><div><span class="hero-kicker">CONTENT INTELLIGENCE</span><h2>Один стиль.<br><em>Бесконечно больше контента.</em></h2><p>Загрузи материалы, собери Content Profile и управляй идеями, хуками и Shorts из одного рабочего пространства.</p><div class="hero-actions"><button class="primary" data-jump="videos">Добавить видео →</button><button class="ghost" data-jump="profile">Собрать профиль</button></div></div><div class="hero-orb"><div class="orb-ring"></div><div class="orb-core">AI<br><small>TWIN</small></div></div></div>
+<div class="dashboard-grid"><div class="card"><div class="cardhead"><span>QUICK START</span><b>01</b></div><div class="quick-grid"><button data-jump="videos"><strong>01</strong><span>Добавить видео</span><small>Локальная библиотека</small></button><button data-jump="profile"><strong>02</strong><span>Обучить стиль</span><small>Content Profile</small></button><button data-jump="ideas"><strong>03</strong><span>Найти идеи</span><small>Idea Lab + AI</small></button><button data-jump="studio"><strong>04</strong><span>Создать Shorts</span><small>Script + монтаж</small></button></div></div>
+<div class="card system-card"><div class="cardhead"><span>SYSTEM</span><b>LIVE</b></div><div class="system-line"><i></i><div><strong>AI Content Engine</strong><small>Workspace ready</small></div></div><div class="system-line"><i></i><div><strong>Local Library</strong><small id="dashVideoState">0 материалов</small></div></div><div class="system-line"><i></i><div><strong>Content Profile</strong><small id="dashProfileState">Не создан</small></div></div></div></div>
+</section>
+
+<section id="videos" class="section hidden"><div class="card"><div class="cardhead"><span>MY VIDEOS</span><b id="videoCount">0</b></div><div id="videoList" class="video-list"></div></div></section><section id="profile" class="section hidden"><div class="card"><div class="cardhead"><span>CONTENT PROFILE</span><b>AI ANALYSIS</b></div><div id="fullProfile" class="profile-view"></div></div></section><section id="ideasSection" class="section hidden"><div class="card ideas"><div class="cardhead"><span>IDEA LAB</span><b>POLZA AI</b></div><div class="idea-form"><input id="topic" placeholder="Например: GTA 6 — 10 идей для Shorts"><button class="primary" id="generate">Сгенерировать</button></div><div id="ideas"></div></div></section><section id="generator" class="section hidden"><div class="card"><div class="cardhead"><span>CONTENT GENERATOR</span><b>CONTENT TWIN</b></div><div class="generator-form"><textarea id="generatorPrompt" placeholder="Напиши, что нужно создать: например, сценарий Shorts на 45 секунд про GTA 6 с сильным хуком."></textarea><button class="primary" id="generateContent">✦ Сгенерировать текст</button><button class="small hidden" id="sendGeneratedToVideo">→ Передать текст в Kling</button></div><div class="result-actions"><button class="small" id="copyGenerated">Копировать</button><button class="small" id="downloadGenerated">Скачать TXT</button></div><pre id="generatedContent" class="generated"></pre></div></section>
+<section id="studio" class="section hidden"><div class="card"><div class="cardhead"><span>SHORTS STUDIO</span><b>STRUCTURED OUTPUT</b></div><div class="studio-grid"><div class="studio-controls"><label>ТЕМА</label><input id="studioTopic" placeholder="Например: почему GTA 6 изменит игровые трейлеры"><label>Платформа</label><select id="studioPlatform"><option>YouTube Shorts</option><option>TikTok</option><option>Instagram Reels</option></select><label>Длительность</label><select id="studioDuration"><option value="15">15 сек</option><option value="30">30 сек</option><option value="45" selected>45 сек</option><option value="60">60 сек</option></select><label>ЦЕЛЬ</label><input id="studioGoal" placeholder="Удержание, комментарии, подписка…"><button class="primary" id="createShort">Создать Shorts-план</button><label>AI VIDEO MODEL</label><select id="videoModel"><option value="kling/v3" selected>Kling 3.0 · 9:16 · sound</option></select><label>AI VIDEO LENGTH</label><select id="videoDuration"><option value="5">5 сек</option><option value="10" selected>10 сек</option><option value="15">15 сек</option></select><button class="primary" id="generateAiVideo">✦ Сгенерировать AI-видео</button><button class="ghost hidden" id="renderShort">▶ Локальный preview</button><div id="videoPromptPreview" class="video-prompt-preview">После генерации текста сюда автоматически попадёт промпт для Kling.</div><div id="videoGenerationStatus" class="video-generation-status"></div></div><div id="studioResult" class="studio-result"><div class="empty-state">Здесь появятся хук, сценарий по таймкодам, визуальные подсказки, субтитры и CTA.</div></div></div></div></section><div id="settingsModal" class="modal hidden">
+  <div class="modal-card">
+    <div class="cardhead"><span>AI SETTINGS</span><button class="close" id="closeSettingsTop">×</button></div>
+    <h2>Подключение Polza AI</h2>
+    <p>Ключ хранится только в localStorage этого браузера и не записывается в GitHub.</p>
+    <label>Polza API Key</label>
+    <input id="polzaKey" type="password" autocomplete="off" placeholder="sk-polza-…">
+    <label>Модель</label>
+    <input id="polzaModel" type="text" placeholder="openai/gpt-6-astra">
+    <div class="modal-actions">
+      <button class="small" id="closeSettings">Отмена</button>
+      <button class="primary" id="saveSettings">Сохранить</button>
+    </div>
+  </div>
+</div>
+<section id="hooks" class="section hidden"><div class="card"><div class="cardhead"><span>HOOK LAB</span><b>RETENTION</b></div><div class="hook-lab-form"><input id="hookTopic" placeholder="Тема ролика"><select id="hookCount"><option value="5">5 хуков</option><option value="10" selected>10 хуков</option><option value="20">20 хуков</option></select><button class="primary" id="generateHooks">Сгенерировать хуки</button></div><div id="hookResults" class="hook-results"><div class="empty-state">Создай несколько вариантов первого кадра и первой фразы.</div></div></div></section><section id="analytics" class="section hidden"><div class="card"><div class="cardhead"><span>ANALYTICS</span><b>CONTENT LOOP</b></div><div class="analytics-actions"><button class="small" id="refreshAnalytics">Обновить</button><button class="small" id="resetWorkspace">Сбросить локальные данные</button></div><div class="analytics-grid"><div class="metric"><span>Видео</span><strong id="metricVideos">0</strong></div><div class="metric"><span>Профиль</span><strong id="metricProfile">—</strong></div><div class="metric"><span>Идей</span><strong id="metricIdeas">0</strong></div><div class="metric"><span>Последний Shorts</span><strong id="metricShort">—</strong></div></div><p class="analytics-note">Метрики просмотров и удержания появятся после подключения источника статистики платформ.</p></div></section><section id="logs" class="section hidden"><div class="card logs-card"><div class="cardhead"><span>SYSTEM LOGS</span><b id="logCount">0</b></div><div id="logWindow" class="log-window"><div class="log-empty">Логи появятся здесь…</div></div></div></section><script>
+(function(){
+  function bootUI(){
+    document.querySelectorAll("nav button[data-section]").forEach(function(btn){
+      btn.addEventListener("click",function(){
+        var name=btn.dataset.section;
+        document.querySelectorAll(".section").forEach(function(s){s.classList.add("hidden")});
+        var target=document.getElementById(name==="ideas"?"ideasSection":name);
+        if(target)target.classList.remove("hidden");
+        document.querySelectorAll("nav button").forEach(function(b){b.classList.toggle("active",b===btn)});
+      });
+    });
+    var settings=document.getElementById("settingsBtn");
+    if(settings)settings.addEventListener("click",function(){
+      var m=document.getElementById("settingsModal");if(m)m.classList.remove("hidden");
+    });
+    var close=document.getElementById("closeSettings");
+    if(close)close.addEventListener("click",function(){
+      var m=document.getElementById("settingsModal");if(m)m.classList.add("hidden");
+    });
+    var closeTop=document.getElementById("closeSettingsTop");
+    if(closeTop)closeTop.addEventListener("click",function(){
+      var m=document.getElementById("settingsModal");if(m)m.classList.add("hidden");
+    });
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",bootUI);else bootUI();
+})();
+</script>
+<script src="./static/app.js?v=20260919-03"></script>
+
+
+</body></html>
